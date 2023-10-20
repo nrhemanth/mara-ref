@@ -1,0 +1,64 @@
+#Imports
+from opentrons import protocol_api
+from opentrons.types import Location, Point
+
+##Need to write the metadata which is the info about the protocol, who wrote it, what version was it written in etc...
+metadata = {
+    #'apiLevel': '2.15', ##API version 
+    'protocolName': 'Moving Water', #Protocol name
+    'description': '''This protocol is the outcome of following the
+                   Python Protocol API, reference:
+                   https://support.opentrons.com/s/article/Understanding-the-X-Y-Z-coordinates-of-the-OT-2 It takes a
+                   transfer water to two lotation.''',
+    'author': 'Clara'
+    }
+
+##Recommended to have a "Requirements" section
+requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'apilevel' here, remove it from the metadata
+
+def run(ctx):
+    ''' input x, y, z values here (in mm). 
+    Location of ice tray x = ,y = ,z = 
+
+    '''
+    # The coordinates are absolute 
+    # with reference to the bottom left corner of slot 1 as origin.
+    # x, y, and z can be a float or integer
+    loc = Location(Point(150, 78, 6), None)
+    loc2 = Location(Point(280,78,6),None)
+    loc3 = Location(Point(330,78,6),None)
+    #pipette and labware
+    tiprack = ctx.load_labware('opentrons_96_tiprack_300ul', '1')
+    pip = ctx.load_instrument('p300_single_gen2', 'right', tip_racks=[tiprack])
+    
+    #variable
+    N = 10
+    #commands
+    pip.pick_up_tip(tiprack['C5'])
+    #pip.move_to(loc)
+    #pip.drop_tip()
+    for i in range(N):
+        pip.aspirate(200,loc)
+        pip.dispense(100,loc2)
+        pip.dispense(100,loc3)
+
+
+
+
+
+# def run(protocol: protocol_api.ProtocolContext): #This is the run function. The actual instruction to give to robot to do something
+#     '''
+#         name = protocol.load_labwear('labwear in library', location)
+#         name_pipet = protocol.load_instrument('name of pipet', 'left' or 'right', tip_racks = [tips1,tips2,...])
+#         transfer() #moves the liquid
+#     '''
+
+#     #Load the labwear from library
+#     tips = protocol.load_labware('opentrons_96_tiprack_300ul', 1)  #96 well tip rack
+#     #reservoir = protocol.load_labware('nest_12_reservoir_15ml', 6) #a reservoir
+#     #plate = protocol.load_labware('nest_96_wellplate_200ul_flat', 3) #96 wellplate
+#     loc = ty.Location(ty.Point(1,1,1))
+#     # OT-2 protocolfor loading pipets
+#     left_pipette = protocol.load_instrument('p300_single_gen2', 'left', tip_racks=[tips]) #Tip set up on the left or right. in this case, left
+
+#     #left_pipette.transfer(100, reservoir['A1'], plate.wells())  #100ul, From --> liquid from reservoir column 1 (A1 is locaiton of liquid but reservoir only has 'A' row), destination --> 96 wellplate
