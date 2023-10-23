@@ -40,26 +40,27 @@ def run(ctx):
     tiprack = ctx.load_labware('opentrons_96_tiprack_300ul', '4')
     pip = ctx.load_instrument('p300_single_gen2', 'right', tip_racks=[tiprack])
 
-    nb = 5
-    nr = 5
-    ny = 1
+    ## change amount
+    nb = [100,100,50]
+    nr = [100,100,50]
+    ny = [20]
     ## commands
     pip.pick_up_tip(tiprack['A1']) # pick up tip
-    for i in range (nb):
-        pip.aspirate(50,loc1) # pick up blue 
-        pip.dispense(50,loc0)# dispense blue
+    for i in range (len(nb)):
+        pip.aspirate(nb[i],loc1) # pick up blue 
+        pip.dispense(nb[i],loc0)# dispense blue
     pip.drop_tip() # drop blue tip
 
     pip.pick_up_tip(tiprack) # pick up tip
-    for i in range(nr):
-        pip.aspirate(50,loc2) # pick up red 
-        pip.dispense(50,loc0)# dispense red
+    for i in range(len(nr)):
+        pip.aspirate(nr[i],loc2) # pick up red 
+        pip.dispense(nr[i],loc0)# dispense red
     pip.drop_tip() # drop red tip
 
     pip.pick_up_tip(tiprack) # pick up tip
-    for i in range(ny):
-        pip.aspirate(20,loc3) # pick up yellow
-        pip.dispense(20,loc0)# dispense yellow
+    for i in range(len(ny)):
+        pip.aspirate(ny[i],loc3) # pick up yellow
+        pip.dispense(ny[i],loc0)# dispense yellow
 
     pip.mix(10, 100, loc0)
 
