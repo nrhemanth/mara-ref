@@ -5,8 +5,11 @@ from opentrons.types import Location, Point
 ##Need to write the metadata which is the info about the protocol, who wrote it, what version was it written in etc...
 metadata = {
     #'apiLevel': '2.15', ##API version 
-    'protocolName': 'Checking location', #Protocol name
-    'description': '''This protocol will check the location if the pipet goes to the correct location.''',
+    'protocolName': 'Checking positions', #Protocol name
+    'description': '''This protocol is the outcome of following the
+                   Python Protocol API, reference:
+                   https://support.opentrons.com/s/article/Understanding-the-X-Y-Z-coordinates-of-the-OT-2 It takes a
+                   transfer water to two lotation.''',
     'author': 'Clara'
     }
 
