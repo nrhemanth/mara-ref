@@ -42,23 +42,3 @@ def run(ctx):
         pip.dispense(100,loc2)
         pip.dispense(100,loc3)
 
-
-
-
-
-# def run(protocol: protocol_api.ProtocolContext): #This is the run function. The actual instruction to give to robot to do something
-#     '''
-#         name = protocol.load_labwear('labwear in library', location)
-#         name_pipet = protocol.load_instrument('name of pipet', 'left' or 'right', tip_racks = [tips1,tips2,...])
-#         transfer() #moves the liquid
-#     '''
-
-#     #Load the labwear from library
-#     tips = protocol.load_labware('opentrons_96_tiprack_300ul', 1)  #96 well tip rack
-#     #reservoir = protocol.load_labware('nest_12_reservoir_15ml', 6) #a reservoir
-#     #plate = protocol.load_labware('nest_96_wellplate_200ul_flat', 3) #96 wellplate
-#     loc = ty.Location(ty.Point(1,1,1))
-#     # OT-2 protocolfor loading pipets
-#     left_pipette = protocol.load_instrument('p300_single_gen2', 'left', tip_racks=[tips]) #Tip set up on the left or right. in this case, left
-
-#     #left_pipette.transfer(100, reservoir['A1'], plate.wells())  #100ul, From --> liquid from reservoir column 1 (A1 is locaiton of liquid but reservoir only has 'A' row), destination --> 96 wellplate
