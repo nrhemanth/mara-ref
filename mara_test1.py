@@ -15,9 +15,9 @@ metadata = {
 requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'apilevel' here, remove it from the metadata
 
 ##Defining locations - map
-x = 125.3
-y = 86.88
-p0 = [x*2+x/2,y*2+y/2]
+x = 125.3 + 10.00
+y = 86.88 + 10.00
+p0 = [x*2+x/2,y+y/2]
 p1 = [x+x/4,y*2-y/4]
 p2 = [x*2-x/4,p1[1]]
 p3 = [p1[0],y+y/4]
