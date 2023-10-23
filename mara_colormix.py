@@ -5,7 +5,7 @@ from opentrons.types import Location, Point
 ## Need to write the metadata which is the info about the protocol, who wrote it, what version was it written in etc...
 metadata = {
     #'apiLevel': '2.15', ##API version 
-    'protocolName': 'Moving Water', #Protocol name
+    'protocolName': 'Mixing colors', #Protocol name
     'description': '''This protocol is the outcome of following the
                    Python Protocol API, reference:
                    https://support.opentrons.com/s/article/Understanding-the-X-Y-Z-coordinates-of-the-OT-2 It takes a
