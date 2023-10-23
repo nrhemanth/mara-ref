@@ -17,9 +17,9 @@ metadata = {
 requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'apilevel' here, remove it from the metadata
 
 ##Defining locations - map
-x = 125.3
-y = 86.88
-p0 = [x*2+x/2,y*2+y/2]
+x = 125.3 + 10.00
+y = 86.88 + 7.00
+p0 = [x*2+x/2,y+y/2]
 p1 = [x+x/4,y*2-y/4]
 p2 = [x*2-x/4,p1[1]]
 p3 = [p1[0],y+y/4]
@@ -27,7 +27,6 @@ p3 = [p1[0],y+y/4]
 def run(ctx):
     ''' input x, y, z values here (in mm). 
     Location of ice tray x = ,y = ,z = 
-
     '''
     ## The coordinates are absolute 
     ## with reference to the bottom left corner of slot 1 as origin.
@@ -40,24 +39,31 @@ def run(ctx):
     ## pipette and labware
     tiprack = ctx.load_labware('opentrons_96_tiprack_300ul', '4')
     pip = ctx.load_instrument('p300_single_gen2', 'right', tip_racks=[tiprack])
-    
+
+    nb = 2
+    nr = 3
+    ny = 1
     ## commands
     pip.pick_up_tip(tiprack['A1']) # pick up tip
-    pip.aspirate(200,loc1) # pick up blue 
-    pip.dispense(100,loc0)# dispense blue
+    for i in range (nb):
+        pip.aspirate(100,loc1) # pick up blue 
+        pip.dispense(100,loc0)# dispense blue
     pip.drop_tip() # drop blue tip
 
     pip.pick_up_tip(tiprack) # pick up tip
-    pip.aspirate(200,loc2) # pick up red 
-    pip.dispense(100,loc0)# dispense red
+    for i in range(nr):
+        pip.aspirate(100,loc2) # pick up red 
+        pip.dispense(100,loc0)# dispense red
     pip.drop_tip() # drop red tip
 
     pip.pick_up_tip(tiprack) # pick up tip
-    pip.aspirate(200,loc3) # pick up yellow
-    pip.dispense(100,loc0)# dispense yellow
-    pip.drop_tip() # drop yellow tip
+    for i in range(ny):
+        pip.aspirate(20,loc3) # pick up yellow
+        pip.dispense(20,loc0)# dispense yellow
 
-    pip.mix(3, 100, loc0)
+    pip.mix(10, 100, loc0)
+
+    pip.drop_tip() # drop red tip
 
     # for i in range(N):
     #     pip.dispense(100,loc3)
