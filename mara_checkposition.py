@@ -51,13 +51,18 @@ def run(ctx):
     #protocol for just moving the tip (for checking positions)
     for i in range(len(p0)):
         pip.move_to(Location(Point(p0[i][0], p0[i][1], 6), None))
+        pipette.delay(minutes=1) # delay
         #pip.move_to(loc0_0)
         #pip.move_to(loc0_1)
 
     pip.move_to(loc1)
+    pipette.delay(minutes=1) # delay
     pip.move_to(loc2)
+    pipette.delay(minutes=1) # delay
     pip.move_to(loc3)
+    pipette.delay(minutes=1) # delay
     pip.move_to(loc4)
+    pipette.delay(minutes=1) # delay
     pip.home
 
 
