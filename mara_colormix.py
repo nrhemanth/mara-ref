@@ -19,7 +19,14 @@ requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'api
 ##Defining locations - map
 x = 125.3 + 10.00
 y = 86.88 + 3.00
-p0 = [[x+x/8,y-y/3.2],[x+3*x/8,y-y/3.2],[x+x/8,y/3.2],[x+3*x/8,y/3.2],]
+p0 = [[x + 1*x/8, y-y/3.2],
+      [x + 3*x/8, y-y/3.2],
+      [x + 5*x/8, y-y/3.2],
+      [x + 7*x/8, y-y/3.2],
+      [x + 1*x/8, y/3.2],
+      [x + 3*x/8, y/3.2],
+      [x + 5*x/8, y/3.2],
+      [x + 7*x/8, y/3.2]]
 p1 = [x+x/4,y*2-y/4]
 p2 = [x*2-x/4,p1[1]]
 p3 = [p1[0],y+y/4]
@@ -42,10 +49,18 @@ def run(ctx):
     tiprack = ctx.load_labware('opentrons_96_tiprack_300ul', '4')
     pip = ctx.load_instrument('p300_single_gen2', 'right', tip_racks=[tiprack])
 
-    ## change amount
-    nb = [100,100,50]
-    nr = [100,100,50]
-    ny = [20]
+    ## change amount #MAX VOLUME 1000ul
+    nb = [[100,100,50], #volume of how much mara picks up. max 300 tip
+          [100,100,100],
+          [],
+          []]
+    nr = [[100,100],
+          [],
+          []]
+    ny = [[20],
+          [],
+          [],
+          []]
     ## commands
     pip.pick_up_tip(tiprack['A1']) # pick up tip
     for i in range (len(nb)):

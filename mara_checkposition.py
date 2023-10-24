@@ -25,6 +25,7 @@ p0 = [[x + 1*x/8, y-y/3.2],
       [x + 3*x/8, y/3.2],
       [x + 5*x/8, y/3.2],
       [x + 7*x/8, y/3.2]]
+
 p1 = [x+x/4,y*2-y/4]
 p2 = [x*2-x/4,p1[1]]
 p3 = [p1[0],y+y/4]
@@ -58,7 +59,6 @@ def run(ctx):
     pip.move_to(loc3)
     pip.move_to(loc4)
     pip.home
-
 
 
 # def run(protocol: protocol_api.ProtocolContext): #This is the run function. The actual instruction to give to robot to do something
