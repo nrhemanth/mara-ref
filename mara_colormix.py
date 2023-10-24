@@ -5,7 +5,7 @@ from opentrons.types import Location, Point
 ## Need to write the metadata which is the info about the protocol, who wrote it, what version was it written in etc...
 metadata = {
     #'apiLevel': '2.15', ##API version 
-    'protocolName': 'Mixing colors', #Protocol name
+    'protocolName': 'Mixing colors_Map1', #Protocol name
     'description': '''This protocol is the outcome of following the
                    Python Protocol API, reference:
                    https://support.opentrons.com/s/article/Understanding-the-X-Y-Z-coordinates-of-the-OT-2 It takes a
@@ -18,11 +18,12 @@ requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'api
 
 ##Defining locations - map
 x = 125.3 + 10.00
-y = 86.88 + 7.00
-p0 = [x*2+x/2,y+y/2]
+y = 86.88 + 3.00
+p0 = [[x+x/8,y-y/3.2],[x+3*x/8,y-y/3.2],[x+x/8,y/3.2],[x+3*x/8,y/3.2],]
 p1 = [x+x/4,y*2-y/4]
 p2 = [x*2-x/4,p1[1]]
 p3 = [p1[0],y+y/4]
+p4 = [p2[0],p3[1]]
 
 def run(ctx):
     ''' input x, y, z values here (in mm). 
@@ -31,10 +32,11 @@ def run(ctx):
     ## The coordinates are absolute 
     ## with reference to the bottom left corner of slot 1 as origin.
     ## x, y, and z can be a float or integer
-    loc0 = Location(Point(p0[0], p0[1], 6), None) # dispense - location of mixing
+    loc0 = Location(Point(p0[0][0], p0[0][1], 6), None) # dispense - location of mixing
     loc1 = Location(Point(p1[0],p1[1],6),None) # location of blue dye 
     loc2 = Location(Point(p2[0],p2[1],6),None) # location of red dye 
     loc3 = Location(Point(p3[0],p3[1],6),None) # location of yellow dye
+    loc4 = Location(Point(p4[0],p4[1],6),None)  # location of green dye
 
     ## pipette and labware
     tiprack = ctx.load_labware('opentrons_96_tiprack_300ul', '4')
