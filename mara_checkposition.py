@@ -18,11 +18,11 @@ requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'api
 #x = 125.3 + 10.00
 #y = 86.88 + 3.00
 
-##defining location (victor)
+##defining location 
 x5 = 118.5 + 13.3    ## x5 & y5 are the coordinates for the bottom left corner of plate 5, same idea for x2 & y2 
 y5 = 79.3 + 12.3    
 x2 = 118.5 + 13.3    ## x_code = x_irl + 13.3
-y2 = -11 + 13.3      ## y_code = y_irl + 12.3 
+y2 = -11 + 12.3      ## y_code = y_irl + 12.3 
 
 ## width of box measured from middle of dividers = 132.4
 ## height of box measured from middle of dividers = 90.3
