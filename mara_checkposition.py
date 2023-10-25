@@ -15,21 +15,34 @@ metadata = {
 requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'apilevel' here, remove it from the metadata
 
 ##Defining locations - map
-x = 125.3 + 10.00
-y = 86.88 + 3.00
-p0 = [[x + 1*x/8, y-y/3.2],
-      [x + 3*x/8, y-y/3.2],
-      [x + 5*x/8, y-y/3.2],
-      [x + 7*x/8, y-y/3.2],
-      [x + 1*x/8, y/3.2],
-      [x + 3*x/8, y/3.2],
-      [x + 5*x/8, y/3.2],
-      [x + 7*x/8, y/3.2]]
+#x = 125.3 + 10.00
+#y = 86.88 + 3.00
 
-p1 = [x+x/4,y*2-y/4]
-p2 = [x*2-x/4,p1[1]]
-p3 = [p1[0],y+y/4]
+##defining location 
+x5 = 118.5 + 13.3    ## x5 & y5 are the coordinates for the bottom left corner of plate 5, same idea for x2 & y2 
+y5 = 79.3 + 12.3    
+x2 = 118.5 + 13.3    ## x_code = x_irl + 13.3
+y2 = -11 + 12.3      ## y_code = y_irl + 12.3 
+
+## width of box measured from middle of dividers = 132.4
+## height of box measured from middle of dividers = 90.3
+
+## positions of exact center points 
+p0 = [[x2 + 0.125*132.4, y2 + 0.75*90.3],
+      [x2 + 0.375*132.4, y2 + 0.75*90.3],
+      [x2 + 0.625*132.4, y2 + 0.75*90.3],
+      [x2 + 0.875*132.4, y2 + 0.75*90.3],
+      [x2 + 0.125*132.4, y2 + 0.25*90.3],
+      [x2 + 0.375*132.4, y2 + 0.25*90.3],
+      [x2 + 0.625*132.4, y2 + 0.25*90.3],
+      [x2 + 0.875*132.4, y2 + 0.25*90.3]]
+
+p1 = [x5+0.25*132.4, y5 + 0.75*90.3]
+p2 = [x5 + 0.75*132.4,p1[1]]
+p3 = [p1[0],y5 + 0.25*90.3]
 p4 = [p2[0],p3[1]]
+
+
 
 def run(ctx):
     ''' input x, y, z values here (in mm). 
@@ -51,13 +64,20 @@ def run(ctx):
     #protocol for just moving the tip (for checking positions)
     for i in range(len(p0)):
         pip.move_to(Location(Point(p0[i][0], p0[i][1], 6), None))
+        #pip.delay(minutes=1)#delay
+        
+        
         #pip.move_to(loc0_0)
         #pip.move_to(loc0_1)
 
     pip.move_to(loc1)
+    
     pip.move_to(loc2)
+    
     pip.move_to(loc3)
+    
     pip.move_to(loc4)
+   
     pip.home
 
 
