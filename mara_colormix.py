@@ -39,7 +39,6 @@ def run(ctx):
     ## The coordinates are absolute 
     ## with reference to the bottom left corner of slot 1 as origin.
     ## x, y, and z can be a float or integer
-    loc0 = Location(Point(p0[0][0], p0[0][1], 6), None) # dispense - location of mixing
     loc1 = Location(Point(p1[0],p1[1],6),None) # location of blue dye 
     loc2 = Location(Point(p2[0],p2[1],6),None) # location of red dye 
     loc3 = Location(Point(p3[0],p3[1],6),None) # location of yellow dye
@@ -49,35 +48,44 @@ def run(ctx):
     tiprack = ctx.load_labware('opentrons_96_tiprack_300ul', '4')
     pip = ctx.load_instrument('p300_single_gen2', 'right', tip_racks=[tiprack])
 
-    ## change amount #MAX VOLUME 1000ul
-    nb = [[100,100,50], #volume of how much mara picks up. max 300 tip
-          [100,100,100],
-          [],
-          []]
-    nr = [[100,100],
-          [],
-          []]
+    ## change amount - MAX VOLUME 600ul
+    nb = [100, #volume of how much mara picks up. max 300 tip
+          100,
+          150,
+          150,
+          ]
+    nr = [[100,100,100],
+          [100,100,100,4],
+          [100,100,100,3]]
     ny = [[20],
           [],
           [],
           []]
+
     ## commands
     pip.pick_up_tip(tiprack['A1']) # pick up tip
-    for i in range (len(nb)):
-        pip.aspirate(nb[i],loc1) # pick up blue 
-        pip.dispense(nb[i],loc0)# dispense blue
+    for block in range(len(p0)):
+        for i in range (len(nb)):
+            for j in range(len(nb)):
+                loc0 = Location(Point(p0[block][0], p0[block][1], 6), None) # dispense - location of mixing
+                pip.aspirate(nb[i],loc1) # pick up blue 
+                pip.dispense(nb[i],loc0)# dispense blue
     pip.drop_tip() # drop blue tip
 
     pip.pick_up_tip(tiprack) # pick up tip
-    for i in range(len(nr)):
-        pip.aspirate(nr[i],loc2) # pick up red 
-        pip.dispense(nr[i],loc0)# dispense red
+    for j in range(p0):
+        for i in range(len(nr)):
+            loc0 = Location(Point(p0[j][0], p0[j][1], 6), None) # dispense - location of mixing
+            pip.aspirate(nr[i],loc2) # pick up red 
+            pip.dispense(nr[i],loc0)# dispense red
     pip.drop_tip() # drop red tip
 
     pip.pick_up_tip(tiprack) # pick up tip
-    for i in range(len(ny)):
-        pip.aspirate(ny[i],loc3) # pick up yellow
-        pip.dispense(ny[i],loc0)# dispense yellow
+    for j in range(len(p0)):
+        for i in range(len(ny)):
+            loc0 = Location(Point(p0[j][0], p0[j][1], 6), None) # dispense - location of mixing
+            pip.aspirate(ny[i],loc3) # pick up yellow
+            pip.dispense(ny[i],loc0)# dispense yellow
 
     pip.mix(10, 100, loc0)
 
