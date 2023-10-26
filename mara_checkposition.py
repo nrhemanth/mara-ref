@@ -1,7 +1,9 @@
+#%%[markdown]
 #Imports
 from opentrons import protocol_api
 from opentrons.types import Location, Point
 
+#%%[markdown]
 ##Need to write the metadata which is the info about the protocol, who wrote it, what version was it written in etc...
 metadata = {
     #'apiLevel': '2.15', ##API version 
@@ -14,10 +16,12 @@ metadata = {
 ##Recommended to have a "Requirements" section
 requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'apilevel' here, remove it from the metadata
 
+#%%[markdown]
 ##Defining locations - map
 #x = 125.3 + 10.00
 #y = 86.88 + 3.00
 
+#%%[markdown]
 ##defining location 
 x5 = 118.5 + 13.3    ## x5 & y5 are the coordinates for the bottom left corner of plate 5, same idea for x2 & y2 
 y5 = 79.3 + 12.3    
@@ -27,6 +31,7 @@ y2 = -11 + 12.3      ## y_code = y_irl + 12.3
 ## width of box measured from middle of dividers = 132.4
 ## height of box measured from middle of dividers = 90.3
 
+#%%[markdown]
 ## positions of exact center points 
 p0 = [[x2 + 0.125*132.4, y2 + 0.75*90.3],
       [x2 + 0.375*132.4, y2 + 0.75*90.3],
@@ -42,8 +47,7 @@ p2 = [x5 + 0.75*132.4,p1[1]]
 p3 = [p1[0],y5 + 0.25*90.3]
 p4 = [p2[0],p3[1]]
 
-
-
+#%%[markdown]
 def run(ctx):
     ''' input x, y, z values here (in mm). 
     Location of ice tray x = ,y = ,z = 

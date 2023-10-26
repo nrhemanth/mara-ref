@@ -1,3 +1,4 @@
+#%%[markdown]
 #Imports
 from opentrons import protocol_api
 from opentrons.types import Location, Point
@@ -16,6 +17,7 @@ metadata = {
 ##Recommended to have a "Requirements" section
 requirements = {"robotType": "OT-2", "apiLevel": "2.14"} ##Note: If putting 'apilevel' here, remove it from the metadata
 
+#%%[markdown]
 def run(ctx):
     ''' input x, y, z values here (in mm). 
     Location of ice tray x = ,y = ,z = 
