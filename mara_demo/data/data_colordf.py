@@ -1,6 +1,9 @@
 #%%
 import pandas as pd
 from opentrons.types import Location, Point
+import glob
+import os
+import json
 
 #%%
 ##Defining locations - map
@@ -55,25 +58,25 @@ def RGB_stocks():
                 'loc_blue_stock':   [loc1, loc1, loc1, loc1, loc1, loc1, loc1, loc1],
                 'loc_green_stock':  [loc4, loc4, loc4, loc4, loc4, loc4, loc4, loc4,],
                 }
-        stocks = pd.DataFrame(data=RGB_stocksandlocations)
-        return stocks
+        RGB_stock = pd.DataFrame(data=RGB_stocksandlocations)
+        return RGB_stock
 
 # %%
-RGB_stocks = RGB_stocks()
-blue_stock_vol = RGB_stocks['stock_blue_vol']
-red_stock_vol = RGB_stocks['stock_red_vol']
-green_stock_vol = RGB_stocks['stock_green_vol']
+RGB_stock = RGB_stocks()
+blue_stock_vol = RGB_stock['stock_blue_vol']
+red_stock_vol = RGB_stock['stock_red_vol']
+green_stock_vol = RGB_stock['stock_green_vol']
 
-blue_stock_loc = RGB_stocks['loc_blue_stock']
-red_stock_loc = RGB_stocks['loc_red_stock']
-green_stock_loc = RGB_stocks['loc_green_stock']
+blue_stock_loc = RGB_stock['loc_blue_stock']
+red_stock_loc = RGB_stock['loc_red_stock']
+green_stock_loc = RGB_stock['loc_green_stock']
 
 dispense = RGB_stocks['mix_loc']
 
 # %%
 # For CMYK 
 def CMYK_stocks():
-        RGB_stocksandlocations = {'mix_loc': [loc0[0], loc0[1], loc0[2],loc0[3],loc0[4],loc0[5],loc0[6],loc0[7]], 
+        CMYK_stocksandlocations = {'mix_loc': [loc0[0], loc0[1], loc0[2],loc0[3],loc0[4],loc0[5],loc0[6],loc0[7]], 
                 'stock_cyan_vol':         [100, 223, 323, 423, 523, 698, 400, 309],
                 'stock_magenta_vol':        [550, 317, 130, 150, 232, 423, 589, 123],
                 'stock_yellow_vol':       [30, 20, 30, 10, 10, 10, 10, 10],
@@ -83,8 +86,8 @@ def CMYK_stocks():
                 'loc_yellow_stock':  [loc4, loc4, loc4, loc4, loc4, loc4, loc4, loc4,],
                 'loc_black_stock':  [loc4, loc4, loc4, loc4, loc4, loc4, loc4, loc4,],
                 }
-        stocks = pd.DataFrame(data=RGB_stocksandlocations)
-        return stocks
+        CMYK_stocks = pd.DataFrame(data=CMYK_stocksandlocations)
+        return CMYK_stocks
 # %%
 CMYK_stock = CMYK_stocks()
 cyan_stock_vol = CMYK_stock['stock_cyan_vol']
