@@ -4,7 +4,7 @@ Author: Victor Yin
 ##
 The Mara Camera Module is an open-source, 3D-printed imaging tool capable of running Raspberry Pi OS. It is a modular attachment to the Opentron OT-2 workspace.
 
-<div align="left">
+<div align="center">
   <a>
     <img src="images/unnamed.png" alt="Logo" style="width:50%">
     <!---<img src="/Users/ctuwsunlab/Documents/GitHub/Mara_Opentron/images/unnamed.png" alt="Logo" width="80" height="80"> -->
@@ -40,8 +40,9 @@ This repository contains the design procedures required to build the first versi
 + Connect the Pi-board with the camera using a ribbon cable. Instructions can be found here.
 + Insert the Pi-board first with all ports facing outwards in the appropriate orientations. (see figure 2)
 + Insert the camera, making sure the side with the ribbon cable is inline with the designed indent. Adjust the fitting tightness with tape if necessary. Secure the ribbon cable with tape or baling wire so as to not obstruct the camera’s FOV. 
-
-<img src="images/IMG_0004.JPG" alt="birdeye_camera_photo" style="width:50%">
+<p align = "center">
+  <img src="images/IMG_0004.JPG" alt="birdeye_camera_photo" style="width:50%">
+</p>
 
 ## Set-up:
 + Insert a microSD card to the underside of the Pi-board. Then connect the board with an ethernet cable, power cable, and one of the following: 
