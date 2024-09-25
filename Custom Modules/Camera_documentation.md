@@ -80,10 +80,13 @@ The camera position is centered, and requires a clearance of __ mm to focus and 
     <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:50%">
   </div>
 </div>
+![cad_orthog](images/cad_orthog.png){style="height:83px"} ![birdeye_photo](images/IMG_0005.JPG){style="height:83px"}
 -->
 
-![cad_orthog](images/cad_orthog.png){style="height:83px"} ![birdeye_photo](images/IMG_0005.JPG){style="height:83px"}
 
+<figure markdown>
+  ![cad_orthog](images/cad_orthog.png){ width=70 } ![birdeye](images/IMG_0005.JPG){ width=70 }
+</figure>
 ## Limitations:
 + To account for the space taken by the camera, the Pi-board is housed in an extruded section, which restricts the placement of other equipment on certain adjacent workstations. 
 + The wide angle camera results in a fish-eye effect, which requires de-fishing.
