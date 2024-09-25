@@ -11,7 +11,7 @@ The Mara Camera Module is an open-source, 3D-printed imaging tool capable of run
   </a>
 </div>
 
-This repository contains the design procedures required to build the first version of the camera module, which utilizes a Pi 4B 8gb board and a wide-angle Arducam IMX708(SKU B0310). 
+This repository contains the design procedures required to build the first version of the camera module, which utilizes a Pi 4B 8gb board and a wide-angle Arducam IMX708 (SKU B0310). 
 
 
 ## Specifications
