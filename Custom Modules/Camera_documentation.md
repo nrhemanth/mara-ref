@@ -72,10 +72,10 @@ In order to be compatible with the opentron workspace and the pipet arm, the hei
 The camera position is centered, and requires a clearance of __ mm to focus and image the entire well plate in its FOV. See figure 3 for a visualization of the camera’s FOV and figure 4 for the output image. 
 
 
-<div>
+<p>
     <img src="images/cad_orthog.png" alt="cad_orthogonal" style="width:50%">
     <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:50%">
-</div>
+</p>
 
 
 ## Limitations:
