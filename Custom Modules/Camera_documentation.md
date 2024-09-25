@@ -54,7 +54,7 @@ Follow (LINK) to activate the Arducam
     + ________-
     + ________
 
-# Sample Output 
+## Sample Output 
 <!--- "add photo" -->
 
 ## Contributing
