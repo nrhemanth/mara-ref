@@ -6,7 +6,7 @@ The Mara Camera Module is an open-source, 3D-printed imaging tool capable of run
 
 <div align="left">
   <a>
-    <img src="images/unnamed.png" alt="Logo" width="80" height="80">
+    <img src="images/unnamed.png" alt="Logo" style="width:50%">
     <!---<img src="/Users/ctuwsunlab/Documents/GitHub/Mara_Opentron/images/unnamed.png" alt="Logo" width="80" height="80"> -->
   </a>
 </div>
@@ -41,7 +41,7 @@ This repository contains the design procedures required to build the first versi
 + Insert the Pi-board first with all ports facing outwards in the appropriate orientations. (see figure 2)
 + Insert the camera, making sure the side with the ribbon cable is inline with the designed indent. Adjust the fitting tightness with tape if necessary. Secure the ribbon cable with tape or baling wire so as to not obstruct the camera’s FOV. 
 
-<img src="images/IMG_0004.JPG.png" alt="birdeye_camera_photo">
+<img src="images/IMG_0004.JPG" alt="birdeye_camera_photo" style="width:50%">
 
 ## Set-up:
 + Insert a microSD card to the underside of the Pi-board. Then connect the board with an ethernet cable, power cable, and one of the following: 
@@ -74,10 +74,10 @@ The camera position is centered, and requires a clearance of __ mm to focus and 
 
 <div class="row">
   <div class="column">
-    <img src="images/unnamed (1).png" alt="cad_orthogonal" style="width:100%">
+    <img src="images/unnamed (1).png" alt="cad_orthogonal" style="width:50%">
   </div>
   <div class="column">
-    <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:100%">
+    <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:50%">
   </div>
 </div>
 
