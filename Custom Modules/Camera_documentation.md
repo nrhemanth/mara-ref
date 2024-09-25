@@ -73,8 +73,9 @@ The camera position is centered, and requires a clearance of __ mm to focus and 
 
 
 <p align="center">
-    <img src="images/cad_orthog.png" alt="cad_orthogonal" style="width:40%" hspace="10">
-    <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:30%" hspace="10">
+  <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:30%" hspace="10">
+  <img src="images/cad_orthog.png" alt="cad_orthogonal" style="width:40%" hspace="10">
+    
 </p>
 
 
