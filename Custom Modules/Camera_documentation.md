@@ -82,7 +82,8 @@ The camera position is centered, and requires a clearance of __ mm to focus and 
 </div>
 -->
 
-![cad_orthog](images/unnamed (1).png){: style="height:83px"}
+![cad_orthog](images/cad_orthog.png){: style="height:83px"}
+
 ![birdeye_photo](images/IMG_0005.JPG){: style="height:83px"}
 
 ## Limitations:
