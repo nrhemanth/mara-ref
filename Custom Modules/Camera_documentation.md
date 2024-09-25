@@ -25,11 +25,11 @@ This repository contains the design procedures required to build the first versi
 
 
 ## Build Files: 
-+ The CAD file is available for download in cads in Solidworks and STEP formats
++ The CAD file is available for download in **cads** in Solidworks format.
 + Depending on the Raspberry Pi and camera model, user modifications may be necessary. 
 
 ## Fabrication: 
-+ The original STL file is located in printer_exports
++ The original STL file is located in **printer_exports**
 + Recommended printer settings: 
     + Printer: Bambu Lab X1-Carbon
     + Filament: Bambu PLA
