@@ -5,8 +5,9 @@ Author: Victor Yin
 The Mara Camera Module is an open-source, 3D-printed imaging tool capable of running Raspberry Pi OS. It is a modular attachment to the Opentron OT-2 workspace.
 
 <div align="left">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+  <a>
+    <img src="images/unnamed.png" alt="Logo" width="80" height="80">
+    <!---<img src="/Users/ctuwsunlab/Documents/GitHub/Mara_Opentron/images/unnamed.png" alt="Logo" width="80" height="80"> -->
   </a>
 </div>
 
@@ -40,6 +41,8 @@ This repository contains the design procedures required to build the first versi
 + Insert the Pi-board first with all ports facing outwards in the appropriate orientations. (see figure 2)
 + Insert the camera, making sure the side with the ribbon cable is inline with the designed indent. Adjust the fitting tightness with tape if necessary. Secure the ribbon cable with tape or baling wire so as to not obstruct the camera’s FOV. 
 
+<img src="images/IMG_0004.JPG.png" alt="birdeye_camera_photo">
+
 ## Set-up:
 + Insert a microSD card to the underside of the Pi-board. Then connect the board with an ethernet cable, power cable, and one of the following: 
     + USB-A cable to a laptop, or 
@@ -68,9 +71,18 @@ In order to be compatible with the opentron workspace and the pipet arm, the hei
 
 The camera position is centered, and requires a clearance of __ mm to focus and image the entire well plate in its FOV. See figure 3 for a visualization of the camera’s FOV and figure 4 for the output image. 
 
-<!--- "add photo" , "add photo" -->
+
+<div class="row">
+  <div class="column">
+    <img src="images/unnamed (1).png" alt="cad_orthogonal" style="width:100%">
+  </div>
+  <div class="column">
+    <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:100%">
+  </div>
+</div>
 
 ## Limitations:
 + To account for the space taken by the camera, the Pi-board is housed in an extruded section, which restricts the placement of other equipment on certain adjacent workstations. 
 + The wide angle camera results in a fish-eye effect, which requires de-fishing.
 + The clarity and accuracy of imaged colors depend greatly on surrounding light sources. We recommend supplementing the module with white LED lights around the workstation. 
+
