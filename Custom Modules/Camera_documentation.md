@@ -70,7 +70,7 @@ Mara Camera Module is licensed under a Creative Commons Attribution 4.0 Unported
 ## Design Comments: 
 In order to be compatible with the opentron workspace and the pipet arm, the height of the module -including the attached well plate- needed to remain smaller than 100 mm. The bottom of the module needs to be consistent with the Opentron workspace, which is 128 by 86 mm.
 
-The camera position is centered, and requires a clearance of __ mm to focus and image the entire well plate in its FOV. See figure 3 for a visualization of the camera’s FOV and figure 4 for the output image. 
+The camera position is centered, and requires a clearance of 70 mm to focus and image the entire well plate in its FOV. See figure 3 for a visualization of the camera’s FOV and figure 4 for the output image. 
 
 
 <p align="center">
