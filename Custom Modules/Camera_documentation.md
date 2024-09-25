@@ -71,7 +71,7 @@ In order to be compatible with the opentron workspace and the pipet arm, the hei
 
 The camera position is centered, and requires a clearance of __ mm to focus and image the entire well plate in its FOV. See figure 3 for a visualization of the camera’s FOV and figure 4 for the output image. 
 
-
+<!--
 <div class="row">
   <div class="column">
     <img src="images/unnamed (1).png" alt="cad_orthogonal" style="width:50%">
@@ -80,6 +80,10 @@ The camera position is centered, and requires a clearance of __ mm to focus and 
     <img src="images/IMG_0005.JPG" alt="birdeye_photo" style="width:50%">
   </div>
 </div>
+-->
+
+![cad_orthog](images/unnamed (1).png){: style="height:83px"}
+![birdeye_photo](images/IMG_0005.JPG){: style="height:83px"}
 
 ## Limitations:
 + To account for the space taken by the camera, the Pi-board is housed in an extruded section, which restricts the placement of other equipment on certain adjacent workstations. 
