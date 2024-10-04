@@ -33,7 +33,7 @@ This repository contains the design procedures required to build the first versi
 + Recommended printer settings: 
     + Printer: Bambu Lab X1-Carbon
     + Filament: Bambu PLA
-    + Nozzle settings: ____ 
+    + Nozzle settings: Default 0.2 mm at 200 C 
     + Infill percentage: 20-25%
     + Support type: Tree
 + Before installing the Pi-board and camera, attach the printed module to the Opentron workspace to double check that it is compatible. 
@@ -52,17 +52,8 @@ This repository contains the design procedures required to build the first versi
 + Power on the board. The light next to the microSD card slot should blink to signal that it is powered. 
 + Activate the Arducam IMX708. See instructions [here](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/12MP-IMX708/) and common troubleshooting [here](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/Troubleshooting/). 
 
-
-## Taking Pictures
-+ Open terminal and run the following commands to take and save pictures to the board or laptop. 
-    + ________
-    + ________
-
-## Sample Output 
-+ <!--- "add photo" -->
-
 ## Contributing
-Please contact ____ for any questions regarding the camera module. 
+Please contact hy717@uw.edu for any questions regarding the camera module. 
 
 ## Open Source
 Mara Camera Module is licensed under a Creative Commons Attribution 4.0 Unported License (CC BY 4.0) and Certified Open Source Hardware (Work in Progress)
