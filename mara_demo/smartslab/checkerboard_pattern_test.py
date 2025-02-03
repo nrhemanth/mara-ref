@@ -1,4 +1,4 @@
-from opentrons import protocol_api, simulate
+from opentrons import protocol_api, simulate, robot
 import time
 
 metadata = {
@@ -10,9 +10,12 @@ prot = simulate
 requirements = {"robotType": "OT-2", "apiLevel": "2.16"}
 
 """ Parameters """
-aspirate_rate = 1.0 # multiplier from default
-dispense_rate = 1.0 # multiplier from default
-# etc...
+aspirate_rate = 1.0 # multiplier from default max 3x
+dispense_rate = 1.0 # multiplier from default max 3x
+blowout = False # blowout boolean
+touchtip = False # touchtip boolean
+
+# carriage movement speed default 400mm/s (not recommended to increase)
 
 """
 Tips located in location 1
@@ -49,16 +52,19 @@ def run(protocol: protocol_api.ProtocolContext):
                 pip.blow_out() # ensure all soln leaves pipette tip using blowout function
                 pip.aspirate(300, reservoir[reservoir_loc], rate=aspirate_rate) # aspirate more soln
             pip.dispense(95, well_list[i], rate=dispense_rate) # dispense into ith well
+            if touchtip:  # if touchtip parameter true, then perform touch tip in well
+                pip.touch_tip()
             et = time.time()
             #protocol.comment(f'Fill 3 well time: {et-st}')
-        pip.drop_tip() # finally, dispose of tip in garbage
 
     a_st = time.time()
     fill_wells(well_a, "A1")
+    pip.drop_tip(tips["A1"])
     a_et = time.time()
 
     b_st = time.time()
     fill_wells(well_b, "B1")
+    pip.drop_tip(tips["B1"])
     b_et = time.time()
 
     protocol.home()
