@@ -31,8 +31,7 @@ def main_workflow():
 
     # 2) Generate 5 initial LHS samples (CMYK in [0,1])
     n_init = 5
-    lhs_5 = generate_lhs_samples(n_samples=n_init, n_vars=4, sum_constraint=None, seed=42)
-    # shape: (5,4), each row is [C,M,Y,K] in [0..1] (assuming sum_constraint=None for standard LHS)
+    lhs_5 = generate_lhs_samples(n_samples=n_init, n_vars=4, sum_constraint=270.0, seed=42)
 
     # 3) Dispense those 5 samples
     print("Dispensing initial 5 samples via Opentrons...")
