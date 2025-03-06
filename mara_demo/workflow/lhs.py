@@ -15,7 +15,7 @@ def generate_lhs_samples(n_samples, n_vars, sum_constraint, seed):
     samples = lhs(n_vars, samples=n_samples, criterion='maximin')
     # Scale each row so it sums to sum_constraint
     for i in range(n_samples):
-        row_sum = samples[i,:].sum()
+        row_sum = np.sum(samples[i,:])
         samples[i,:] *= sum_constraint / row_sum
     return samples
 
