@@ -12,6 +12,8 @@ import config
 import asyncio
 import torch
 import numpy as np
+import websockets
+import json
 # import pandas as pd
 # import matplotlib.pyplot as plt
 
@@ -23,6 +25,30 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 # from scipy.stats.qmc import LatinHypercube
 from gpytorch.kernels import ScaleKernel, RBFKernel
 
+ROBOT_IP = "169.254.194.251"
+ROBOT_PORT = 48888
+
+async def send_dispense_request(cmyk, start_well=0):
+    """Sends a 'dispense' command to the robot's WebSocket server."""
+    async with websockets.connect(f"ws://{ROBOT_IP}:{ROBOT_PORT}") as ws:
+        data = {
+            "command": "dispense",
+            "cmyk": cmyk,
+            "start_well": start_well
+        }
+        await ws.send(json.dumps(data))
+        # Wait for response
+        resp = await ws.recv()
+        print("Robot response:", resp)
+
+async def send_home_request():
+    """Sends a 'home' command to the robot."""
+    async with websockets.connect(f"ws://{ROBOT_IP}:{ROBOT_PORT}") as ws:
+        data = {"command": "home"}
+        await ws.send(json.dumps(data))
+        resp = await ws.recv()
+        print("Robot response:", resp)
+
 def main_workflow():
     # 1) Set target color in RGB
     target_rgb_255 = config.TARGET_RGB          # e.g. [96, 86, 87]
@@ -31,12 +57,13 @@ def main_workflow():
 
     # 2) Generate 5 initial LHS samples (CMYK in [0,1])
     n_init = 5
-    lhs_5 = generate_lhs_samples(n_samples=n_init, n_vars=4, sum_constraint=None, seed=42)
-    # shape: (5,4), each row is [C,M,Y,K] in [0..1] (assuming sum_constraint=None for standard LHS)
+    lhs_5 = generate_lhs_samples(n_samples=n_init, n_vars=4, sum_constraint=config.MAX_WELL_VOLUME, seed=1)
 
     # 3) Dispense those 5 samples
-    print("Dispensing initial 5 samples via Opentrons...")
-    run_opentrons_mix(lhs_5)  # You might need to handle volumes, etc.
+    all_cmyk = lhs_5.tolist()  # e.g. [[C1,M1,Y1,K1],[C2,M2,Y2,K2],..., [C5,M5,Y5,K5]]
+
+    print("Dispensing initial 5 samples via WebSocket (all at once)...")
+    asyncio.run(send_dispense_request(all_cmyk))
 
     # 4) Take picture
     print("Capturing image for the 5 initial samples...")
@@ -53,9 +80,9 @@ def main_workflow():
     # 6) Convert these 5 samples of RGB to CMYK
     # -> need them in [0..1], so divide by 255 first, then call RGB_to_CMYK
     initial_cmyk_list = []
-    for i in range(n_init):
-        row_rgb01 = np.array(initial_rgb[i]) / 255.0
-        row_cmyk  = RGB_to_CMYK(row_rgb01)
+    for row in initial_rgb:
+        row_rgb01 = np.array(row) / 255.0
+        row_cmyk = RGB_to_CMYK(row_rgb01)
         initial_cmyk_list.append(row_cmyk)
 
     # Convert to a PyTorch tensor
@@ -95,18 +122,19 @@ def main_workflow():
         print(f"Proposed next CMYK = {new_x.detach().numpy()}")
 
         # 9) Dispense the next sample (the 6th, 7th, etc.)
-        run_opentrons_mix(new_x.squeeze(0).numpy())  # convert from torch -> np -> pass to your method
+        new_sample_well = total_samples
+        cmyk_array = new_x.squeeze(0).numpy().tolist()  # shape (4,) -> list
+        asyncio.run(send_dispense_request(cmyk_array, start_well=new_sample_well))
 
         # 10) Take a picture again
         asyncio.run(capture_photo())
 
         # 11) Analyze image: we only need the new well, i.e. well # total_samples
         # if the first 5 used wells indices [0..4], then the 6th is index=5, 7th is index=6, ...
-        well_index = total_samples  # zero-based
         _, new_rgb_values = compute_rgb_grid(config.CAPTURE_IMAGE_PATH, config.ROWS, config.COLS,
                                              config.TOP_LEFT, config.BOTTOM_RIGHT)
         # Extract the single well
-        new_rgb = new_rgb_values[well_index]
+        new_rgb = new_rgb_values[new_sample_well]
         
         # 12) Convert this new RGB -> CMYK
         row_rgb01 = np.array(new_rgb) / 255.0
