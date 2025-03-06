@@ -8,20 +8,50 @@ import pandas as pd
 import numpy as np
 
 from opentrons import protocol_api, execute
-from lhs import store_and_print_cmyk, generate_lhs_samples
-from config import (
-    OPENTRONS_API_VERSION, TIPRACK_TYPE, STOCK_PLATE_TYPE, TARGET_PLATE_TYPE,
-    PIPETTE_TYPE, PIPETTE_MOUNT, LHS_N_SAMPLES, PLATE_ELEVATION,
-    PIPETTE_TIP_MAX_VOL, TIPRACK_SLOT, STOCK_PLATE_SLOT, STOCK_PLATE_SLOT2,
-    TARGET_PLATE_SLOT, PLATE_OFFSET_X, PLATE_OFFSET_Y, PLATE_OFFSET_Z
-)
+# from lhs import store_and_print_cmyk, generate_lhs_samples
+# from config import (
+#     OPENTRONS_API_VERSION, TIPRACK_TYPE, STOCK_PLATE_TYPE, TARGET_PLATE_TYPE,
+#     PIPETTE_TYPE, PIPETTE_MOUNT, LHS_N_SAMPLES, PLATE_ELEVATION,
+#     PIPETTE_TIP_MAX_VOL, TIPRACK_SLOT, STOCK_PLATE_SLOT, STOCK_PLATE_SLOT2,
+#     TARGET_PLATE_SLOT, PLATE_OFFSET_X, PLATE_OFFSET_Y, PLATE_OFFSET_Z
+# )
+
+# metadata
+metadata = {
+    "protocolName": "My Protocol",
+    "author": "Name <opentrons@example.com>",
+    "description": "Simple protocol to get started using the Flex",
+}
+# requirements
+requirements = {"robotType": "OT-2", "apiLevel": "2.19"}
+
+OPENTRONS_API_VERSION = '2.19'
+TIPRACK_TYPE = "opentrons_96_tiprack_300ul"
+STOCK_PLATE_TYPE = "corning_6_wellplate_16.8ml_flat"
+TARGET_PLATE_TYPE = "opentrons_96_wellplate_200ul_pcr_full_skirt"
+
+PIPETTE_TYPE = "p300_single_gen2"
+PIPETTE_MOUNT = "right"
+PIPETTE_TIP_MAX_VOL = 300
+
+TIPRACK_SLOT = "6"
+STOCK_PLATE_SLOT = "5"
+STOCK_PLATE_SLOT2 = "8"
+TARGET_PLATE_SLOT = "1"
+
+PLATE_OFFSET_X = 0
+PLATE_OFFSET_Y = 0
+PLATE_OFFSET_Z = 33
+
+PLATE_ELEVATION = 85
 
 # -------------------- WEBSOCKET IMPORTS --------------------
 import websockets
 import asyncio
 import json
 
-def run_opentrons_mix(cmyk_input, start_well=0):
+    
+def run(protocol, cmyk_input, start_well=0):
     """
     Dispenses one or multiple CMYK samples into the target plate wells.
     cmyk_input can be shape (4,) or shape (N,4).
@@ -171,3 +201,5 @@ if __name__ == "__main__":
     # If we run this script directly, it starts the WebSocket server
     # so the robot is always waiting for external commands.
     asyncio.run(main_server())
+    
+    
