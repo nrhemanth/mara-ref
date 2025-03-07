@@ -4,7 +4,7 @@ import requests
 app = Flask(__name__)
 
 # Replace with your Opentrons Robot's IP
-ROBOT_IP = "192.168.0.103"
+ROBOT_IP = "192.168.0.102"
 API_URL = f"http://{ROBOT_IP}:48888"
 
 # Function to create a new OT-2 run session
