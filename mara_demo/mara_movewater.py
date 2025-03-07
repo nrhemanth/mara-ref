@@ -18,13 +18,15 @@ metadata = {
 requirements = {"robotType": "OT-2", "apiLevel": "2.19"} ##Note: If putting 'apilevel' here, remove it from the metadata
 
 #%%[markdown]
-def run(ctx):
+
+# protocol run function
+def run(protocol: protocol_api.ProtocolContext):
     ''' input x, y, z values here (in mm). 
     Location of ice tray x = ,y = ,z = 
 
     '''
     
-    ctx.home()
+    protocol.home()
     # The coordinates are absolute 
     # with reference to the bottom left corner of slot 1 as origin.
     # x, y, and z can be a float or integer
