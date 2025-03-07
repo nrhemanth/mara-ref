@@ -1,6 +1,7 @@
 '''
 Vattanary Tevy - created 03/02/2025 (Modified for Interactive Workflow)
 Orchestrates workflow with manual intervention points and color-grouped output
+Fixed to correctly interpret LHS samples
 '''
 
 from camera import capture_photo
@@ -26,12 +27,20 @@ def wait_for_user_input(message="Press Enter to continue..."):
     """Pause execution until user presses Enter."""
     input(message)
 
-def print_color_grouped_volumes(cmyk_list):
-    """Print CMYK volumes grouped by color component."""
-    cyan_values = [round(cmyk[0] * MAX_WELL_VOLUME, 2) for cmyk in cmyk_list]
-    magenta_values = [round(cmyk[1] * MAX_WELL_VOLUME, 2) for cmyk in cmyk_list]
-    yellow_values = [round(cmyk[2] * MAX_WELL_VOLUME, 2) for cmyk in cmyk_list]
-    black_values = [round(cmyk[3] * MAX_WELL_VOLUME, 2) for cmyk in cmyk_list]
+def print_color_grouped_volumes(cmyk_array):
+    """
+    Print CMYK volumes grouped by color component.
+    cmyk_array: shape (n_samples, 4) - each row is a well, columns are C,M,Y,K
+    """
+    # Convert to numpy array for easier manipulation
+    cmyk_array = np.array(cmyk_array)
+    n_samples = cmyk_array.shape[0]
+    
+    # Extract each color channel and scale to MAX_WELL_VOLUME
+    cyan_values = [round(cmyk_array[i, 0] * MAX_WELL_VOLUME, 2) for i in range(n_samples)]
+    magenta_values = [round(cmyk_array[i, 1] * MAX_WELL_VOLUME, 2) for i in range(n_samples)]
+    yellow_values = [round(cmyk_array[i, 2] * MAX_WELL_VOLUME, 2) for i in range(n_samples)]
+    black_values = [round(cmyk_array[i, 3] * MAX_WELL_VOLUME, 2) for i in range(n_samples)]
     
     print("Cyan:")
     print(", ".join([f"{val}" for val in cyan_values]))
@@ -46,8 +55,8 @@ def print_color_grouped_volumes(cmyk_list):
     print(", ".join([f"{val}" for val in black_values]))
     
     # Print total volumes for verification
-    for i, cmyk in enumerate(cmyk_list):
-        total = sum([round(val * MAX_WELL_VOLUME, 2) for val in cmyk])
+    for i in range(n_samples):
+        total = sum([round(cmyk_array[i, j] * MAX_WELL_VOLUME, 2) for j in range(4)])
         print(f"Well {i} total: {total:.2f}µL")
 
 def main_workflow_interactive():
@@ -59,12 +68,15 @@ def main_workflow_interactive():
 
     # 2) Generate 5 initial LHS samples (CMYK in [0,1])
     n_init = 5
-    lhs_5 = generate_lhs_samples(n_samples=n_init, n_vars=4, sum_constraint=1.0, seed=1)
+    # Set sum_constraint=1.0 since we'll scale to MAX_WELL_VOLUME later
+    lhs_samples = generate_lhs_samples(n_samples=n_init, n_vars=4, sum_constraint=1.0, seed=1)
+    
+    # LHS returns shape (n_samples, n_vars) - each row is a well, columns are C,M,Y,K
+    # Keep this format for processing
 
-    # 3) PAUSE: Display CMYK volumes for manual dispensing instead of automatic dispensing
-    all_cmyk = lhs_5.tolist()
+    # 3) PAUSE: Display CMYK volumes for manual dispensing
     print("\n==== Initial 5 CMYK Samples to Dispense Manually ====")
-    print_color_grouped_volumes(all_cmyk)
+    print_color_grouped_volumes(lhs_samples)
     
     # Wait for user to manually dispense and signal completion
     wait_for_user_input("\nPlease manually dispense these samples, then press Enter to capture image...")
