@@ -28,6 +28,8 @@ python
   # Open the csv through the server
   df = pd.read_csv("http://192.168.0.100:8000/conditions.csv")
 ```
+Once you successfully open the csv file, you can run Mara protocalls regularly. But to get new values every iteration, you to put the above code in a loop with a timer to continuously query for new values 
+
 
 ### In Workflow protocol, 
 You can update the csv values regularly, here is an example: 
