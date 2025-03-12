@@ -11,10 +11,12 @@ bash
 ```
 
 If Sucessful, then it will look like:
-```
+![Sucessful Terminal](pics/terminal_success.png)
+
+<!--```
 Serving HTTP on :: port 8000 (http://[::]8000)...
 ::ff:192.168.0.103 - - [11/Mar/2025 17:23:55] "GET/ conditions.csv HTTP/1.1" 200 -
-```
+```-->
 
 In Mara protocol, you need to call the server and read the csv file. Using Pandas, you can call the csv file at:
 ```
