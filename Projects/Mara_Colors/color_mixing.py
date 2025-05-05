@@ -35,7 +35,7 @@ class GaussianProcess:
         self.gp = None
         self.bounds = bounds
 
-    def fit(self, train_yvar=None):
+    def fit(self,):
         # Set the device and dtype
         dtype = torch.float64
 
@@ -43,12 +43,8 @@ class GaussianProcess:
         X = normalize(X, bounds=self.bounds)
         y = torch.tensor(self.train_y, dtype=dtype).reshape(-1,1)
 
-        # Handle train_yvar
-        if train_yvar is not None:
-            yvar = torch.tensor(train_yvar, dtype=dtype).reshape(-1,1)
-
         # Define a GP model
-        self.gp = SingleTaskGP(train_X=X, train_Y=y, train_Yvar=yvar)
+        self.gp = SingleTaskGP(train_X=X, train_Y=y)
         # Marginal Log Likelihood (MLL) for training
         mll = ExactMarginalLogLikelihood(self.gp.likelihood, self.gp)
         # Optimize model
