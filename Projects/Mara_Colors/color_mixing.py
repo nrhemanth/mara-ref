@@ -98,7 +98,7 @@ class BayesianOptimization:
         dtype = torch.float64
         device = torch.device('cpu')
         model = self.gp_model.get_model()
-        best_f = 1.0 #self.gp_model.get_train_y().max()
+        best_f = self.gp_model.get_train_y().min()
         batch_size = self.batch_size
         bounds = self.bounds.to(device, dtype=dtype)
 
@@ -124,6 +124,14 @@ class BayesianOptimization:
         self.df_candidates = pd.DataFrame(unnormalized_candidates, columns=["volC", "volM", "volY", "volK"])
 
         return  self.df_candidates
+    
+    def constrain_volumes(self, df_candidates):
+        max_volume = 100
+        df_candidates = df_candidates.copy()
+        stoichiometry = df_candidates[["volC", "volM", "volY", "volK"]].div(df_volumes, axis=0)
+        df_candidates[["volC", "volM", "volY", "volK"]] = stoichiometry.mul(max_volume, axis=0)
+        df_volumes = df_candidates[["volC", "volM", "volY", "volK"]].sum(axis=1)
+        return df_volumes
     
     def save_results(self, full_df,output_path):
         """
