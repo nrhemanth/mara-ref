@@ -32,10 +32,9 @@ class GaussianProcess:
         self.train_X = train_X
         self.train_y = train_y
         self.train_yvar = train_yvar
-        self.gp = None
         self.bounds = bounds
 
-    def fit(self,):
+    def fit(self):
         # Set the device and dtype
         dtype = torch.float64
 
