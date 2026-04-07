@@ -1,0 +1,17 @@
+# config/Lite6_config.yaml
+project: "IMOD-Lite6 config"
+tipracks:
+  - name: opentrons_96_tiprack_20ul
+    slot: "11"
+pipettes:
+  - api_name: p20_single_gen2
+    mount: left
+    tiprack_slot: "11"
+    flow_rates:
+      aspirate: 7      # slower for viscous perovskite solution
+      dispense: 7
+      blow_out: 15
+heater:
+  type: opentrons
+  slot: "3"
+  

@@ -1,0 +1,107 @@
+# config/imod_config.yaml
+#
+# Deck configuration for the IMOD drop-casting protocol.
+# This file is read by OT2Controller.setup() to initialise
+# all labware, pipettes, and modules without touching hardware code.
+#
+# To create a new project: copy this file, rename it, and change the values.
+# The Python code stays identical across all projects.
+
+# ── Metadata ────────────────────────────────────────────────────────────────
+project: "IMOD"
+author: "Clara Tamura, Austin Martin"
+api_level: "2.19"
+
+
+# ── Tip racks ───────────────────────────────────────────────────────────────
+# Each entry: labware API name + deck slot
+tipracks:
+  - name: opentrons_96_tiprack_20ul
+    slot: "11"
+  - name: opentrons_96_tiprack_300ul
+    slot: "10"
+
+
+# ── Pipettes ─────────────────────────────────────────────────────────────────
+# mount: "left" or "right"
+# type: "single" or "multi" (8-channel)
+# tiprack_slot: must match a slot listed in tipracks above
+# flow_rates: aspirate / dispense / blow_out in µL/s
+pipettes:
+# Left mount: P20 single-channel for small volumes
+  - api_name: p20_single_gen2
+    mount: left
+    type: single
+    tiprack_slot: "11"
+    flow_rates:
+      aspirate: 10
+      dispense: 10
+      blow_out: 20
+# Right mount: P300 single-channel for larger volumes
+  - api_name: p300_single_gen2
+    mount: right
+    type: single
+    tiprack_slot: "10"
+    flow_rates:
+      aspirate: 50
+      dispense: 50
+      blow_out: 100
+
+
+# ── Labware ──────────────────────────────────────────────────────────────────
+# role:   a short label your protocol code uses to look up this plate
+#         e.g. robot.labware["mixing_plate"]
+# offset: fine-tune x/y/z after calibration (mm). Omit to use [0, 0, 0].
+labware:
+  - role: mixing_plate
+    name: opentrons_96_wellplate_200ul_pcr_full_skirt
+    slot: "8"
+    offset: [0, 0, 2]          # z+2: raises tip 2 mm above calibrated position
+
+  - role: source_plate
+    name: corning_24_wellplate_3.4ml_flat
+    slot: "7"
+    offset: [0, 0, 3]
+
+  - role: source_wells            # which wells in source_plate hold stock solutions
+    wells: ["A1", "B1", "C1"]    # referenced in drop_casting.py, not hardware code
+
+
+# ── Heater ───────────────────────────────────────────────────────────────────
+# type: "custom" uses a 96-well plate at a non-standard z-height (external heater)
+#       "opentrons" uses the official Heater-Shaker module
+heater:
+  type: custom                   # "custom" | "opentrons"
+  slot: "3"
+
+  # Only used when type = "custom"
+  # Fine x/y/z offsets per sample position (1-indexed)
+  # Format: [well_name, [x_offset, y_offset, z_offset]]
+  custom_offsets:
+    1:  ["B2",  [-1.0,  0.0, -1.4]]
+    2:  ["B5",  [-1.0,  0.0, -1.4]]
+    3:  ["B8",  [-1.0,  0.0, -1.4]]
+    4:  ["B11", [-1.0,  0.0, -1.4]]
+    5:  ["E2",  [-1.0,  0.0, -1.4]]
+    6:  ["E5",  [-1.0,  0.0, -1.4]]
+    7:  ["E8",  [-1.0,  0.0, -1.4]]
+    8:  ["E11", [-1.0,  0.0, -1.4]]
+    9:  ["H2",  [-1.0, -1.0, -1.4]]
+    10: ["H5",  [-1.0, -1.0, -1.4]]
+    11: ["H8",  [-1.0, -1.0, -1.4]]
+    12: ["H11", [-1.0, -1.0, -1.4]]
+
+  # Only used when type = "opentrons"
+  # opentrons_offsets:
+  #   1:  ["C4",  [-0.5,  1.0, 0]]
+  #   2:  ["C10", [-1.5,  1.0, 0]]
+  #   ...
+
+
+# ── Pipette buffers (used in distribution logic) ──────────────────────────────
+# These aren't hardware settings — they're passed to modules/drop_casting.py.
+# Kept here so all experiment-specific numbers live in one place.
+pipette_settings:
+  pip20_buffer: 2        # µL of extra volume aspirated to avoid short dispenses
+  pip300_buffer: 20
+  pip20_threshold: 30    # volumes above this switch from pip20 to pip300
