@@ -2,13 +2,13 @@
 from hardware.ot2 import OT2Controller
 from opentrons.types import Point
 import pandas as pd
-
+from opentrons.protocol_api import SINGLE, ALL
 
 class Formulations(OT2Controller):
     def __init__(self, protocol, config_path=None):
         super().__init__(protocol, config_path)
 
-    def mara_distribute(self, df: pd.DataFrame, variable, source_id, tip_start="A1"):
+    def mara_distribute_single(self, df: pd.DataFrame, variable, source_id, tip_start="A1"):
         """
         Distribute volumes from a source well into destination wells,
         batching aspirations to minimise tip changes.
@@ -64,7 +64,7 @@ class Formulations(OT2Controller):
 
         print(f"Distribution complete: {variable} from {source_id}.")
 
-    def final_mix(self, df: pd.DataFrame, tip_start=None):
+    def final_mix_single(self, df: pd.DataFrame, tip_start=None):
         """Mix each destination well — 25 cycles × 200 µL, fresh tip per well."""
         if tip_start is not None:
             tiprack_300 = self._tipracks_by_slot["10"]
@@ -81,6 +81,89 @@ class Formulations(OT2Controller):
             self.pipright.drop_tip()
 
         print("Final mix complete.")
+
+
+    def mara_distribute_multi(self, df: pd.DataFrame, variable, source_id, tip_start="A1"):
+        """
+        Distribute volumes from a source well into destination wells,
+        batching aspirations to minimise tip changes.
+        Uses 300 µL multichannel pipette in single-nozzle (partial tip) mode
+        for unique per-well volumes.
+        """
+        vols  = df[variable].values.round(1)
+        dests = df["well"].values
+
+        if len(vols) != len(dests):
+            raise ValueError("Volume list length must match number of destinations.")
+
+        pairs = [(v, d) for v, d in zip(vols, dests) if v > 0]
+
+        tiprack_300 = self._tipracks_by_slot["10"]
+
+        # Partial tip pick-up: one nozzle acts as a single channel
+        self.pipright.configure_nozzle_layout(
+            style=SINGLE, start="A1", tip_racks=[tiprack_300]
+        )
+        self.pipright.starting_tip = tiprack_300.wells_by_name()[tip_start]
+        self.pipright.pick_up_tip()
+
+        idx = 0
+        while idx < len(pairs):
+            batch, total = [], 0
+            while idx < len(pairs):
+                v, _ = pairs[idx]
+                if total + v <= self.pipright.max_volume:
+                    batch.append(pairs[idx])
+                    total += v
+                    idx += 1
+                else:
+                    break
+
+            self.pipright.aspirate(total, self.plate_24[source_id].bottom(1))
+            self.pipright.move_to(self.plate_24[source_id].top(1))
+            self.protocol.delay(seconds=2)
+
+            for v, d in batch:
+                self.pipright.dispense(
+                    v,
+                    self.plate_96[d].top().move(Point(x=2.0, y=0.0, z=-5))
+                )
+
+            self.pipright.blow_out(self.trash)
+
+        self.pipright.drop_tip()
+
+        # Restore to full 8-channel mode after partial tip use
+        self.pipright.configure_nozzle_layout(style=ALL, tip_racks=[tiprack_300])
+
+        print(f"Distribution complete: {variable} from {source_id}.")
+
+    def final_mix_multi(self, df: pd.DataFrame, tip_start=None):
+        """Mix each column — 25 cycles × 200 µL, all 8 channels simultaneously."""
+        tiprack_300 = self._tipracks_by_slot["10"]
+
+        self.pipright.configure_nozzle_layout(style=ALL, tip_racks=[tiprack_300])
+
+        if tip_start is not None:
+            self.pipright.starting_tip = tiprack_300.wells_by_name()[tip_start]
+
+        well_names = df["well"].tolist()
+        columns = sorted(set(int(w[1:]) for w in well_names))
+
+        if len(columns) > 12:
+            raise ValueError("Cannot have more than 12 columns.")
+
+        for col in columns:
+            well = self.plate_96.wells_by_name()[f"A{col}"]
+            self.pipright.pick_up_tip()
+            self.pipright.mix(25, 200, well.bottom(1), rate=200)
+            self.pipright.drop_tip()
+
+        print("Final mix complete.")
+        
+
+
+
 
 
 
