@@ -1,5 +1,5 @@
 # modules/formulations.py
-from hardware.ot2 import OT2Controller
+from Projects.Perovskite.hardware.ot2 import OT2Controller
 from opentrons.types import Point
 import pandas as pd
 from opentrons.protocol_api import SINGLE, ALL

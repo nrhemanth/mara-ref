@@ -1,7 +1,7 @@
 import pandas as pd
 from opentrons.types import Point
-from actions.utils import add_material
-from hardware.ot2 import OT2Controller
+from src.mara.utils import add_material
+from Projects.Perovskite.hardware.ot2 import OT2Controller
 
 
 class DropCasting(OT2Controller):
