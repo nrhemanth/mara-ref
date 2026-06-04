@@ -1,7 +1,7 @@
 """End-to-end demo: upload examples/home.py, preflight, run, stream status.
 
 Usage (against the mock):
-    capybara-mock-robot &
+    mara-mock-robot &
     python -m examples.preflight_home
 
 Against mara:
@@ -14,8 +14,8 @@ import os
 import sys
 from pathlib import Path
 
-from capybara.preflight import confirm_deck_state
-from capybara.runtime import CapyClient, TERMINAL_STATUSES
+from mara.preflight import confirm_deck_state
+from mara.runtime import CapyClient, TERMINAL_STATUSES
 
 HERE = Path(__file__).resolve().parent
 

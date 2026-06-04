@@ -13,12 +13,12 @@ SAMPLE_DATA = json.loads("""
 [
     {"sample_id": 1, "vol_a": 100, "vol_b": 50, "time": 30, "temperature": 25},
     {"sample_id": 2, "vol_a": 100, "vol_b": 50, "time": 30, "temperature": 25},
-    {"sample_id": 3, "vol_a": 100, "vol_b": 50, "time": 35, "temperature": 25},
-    {"sample_id": 4, "vol_a": 100, "vol_b": 50, "time": 30, "temperature": 25},
-    {"sample_id": 5, "vol_a": 100, "vol_b": 50, "time": 30, "temperature": 25},
-    {"sample_id": 6, "vol_a": 100, "vol_b": 50, "time": 35, "temperature": 25},
-    {"sample_id": 7, "vol_a": 100, "vol_b": 50, "time": 30, "temperature": 25},
-    {"sample_id": 8, "vol_a": 100, "vol_b": 50, "time": 35, "temperature": 25}
+    {"sample_id": 3, "vol_a": 80, "vol_b": 70, "time": 35, "temperature": 25},
+    {"sample_id": 4, "vol_a": 80, "vol_b": 70, "time": 30, "temperature": 25},
+    {"sample_id": 5, "vol_a": 60, "vol_b": 90, "time": 30, "temperature": 25},
+    {"sample_id": 6, "vol_a": 60, "vol_b": 90, "time": 35, "temperature": 25},
+    {"sample_id": 7, "vol_a": 40, "vol_b": 110, "time": 30, "temperature": 25},
+    {"sample_id": 8, "vol_a": 40, "vol_b": 110, "time": 35, "temperature": 25}
 ]
 """)
 
@@ -332,8 +332,8 @@ def run(protocol):
     # -----------------------
     # INSTRUMENT
     # -----------------------
-    pip20 = protocol.load_instrument('p20_multi_gen2', mount='left', tip_racks=[tiprack_20])
-    pip300 = protocol.load_instrument('p300_multi_gen2', mount='right', tip_racks=[tiprack_300])
+    pip20 = protocol.load_instrument('p20_multi_gen2', mount='right', tip_racks=[tiprack_20])
+    pip300 = protocol.load_instrument('p300_multi_gen2', mount='left', tip_racks=[tiprack_300])
 
     mof = Quasi2DProtocol(pip300, pip20, fill_mode=FILL_MODE)
 
