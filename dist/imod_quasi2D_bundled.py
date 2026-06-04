@@ -750,8 +750,8 @@ MIX_TIP_START   = "A1"
 
 def run(protocol):
     robot  = IMODCampaign(protocol, "config/imod_config.yaml")
-    arm    = Lite6Controller("config/lite6_config.yaml")
-    kamome = KamomeController("config/kamome_config.yaml")
+    # arm    = Lite6Controller("config/lite6_config.yaml")
+    # kamome = KamomeController("config/kamome_config.yaml")
 
     df = load_conditions(CONDITIONS_URL)
     
@@ -760,6 +760,6 @@ def run(protocol):
     # Step 2 — OT-2 drop-casts
     robot.drop_from_df(df)
     # Step 3 — Lite6 transfers substrates to Kamome stage
-    arm.transfer_to_measurement_stage()
+    # arm.transfer_to_measurement_stage()
     # Step 4 — Kamome measures PL
-    kamome.measure_pl(df["well"].tolist())
+    # kamome.measure_pl(df["well"].tolist())
