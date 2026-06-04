@@ -341,10 +341,10 @@ def run(protocol):
     # Plates and Reservoirs
     # -----------------------
     reservoir = protocol.load_labware("nest_12_reservoir_15ml", "4")
-    reservoir.set_offset(x=0, y=0, z=10)
+    reservoir.set_offset(x=0, y=0, z=5)
 
     plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "5")
-    plate_96.set_offset(x=0, y=0, z=0)
+    plate_96.set_offset(x=0, y=0, z=3)
 
     plate_film, film_wells = set_custom_heater(protocol, '3')
 

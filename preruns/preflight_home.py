@@ -4,8 +4,8 @@ Usage (against the mock):
     capybara-mock-robot &
     python -m examples.preflight_home
 
-Against Capy:
-    CAPY_URL=http://capy.local:31950 python -m examples.preflight_home
+Against mara:
+    ROBOT_URL=http://capy.local:31950 python -m preruns.preflight_home
 """
 
 from __future__ import annotations
