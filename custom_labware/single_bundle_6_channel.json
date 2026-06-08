@@ -1,0 +1,132 @@
+{
+    "ordering": [
+        [
+            "A1"
+        ],
+        [
+            "A2"
+        ],
+        [
+            "A3"
+        ],
+        [
+            "A4"
+        ],
+        [
+            "A5"
+        ],
+        [
+            "A6"
+        ]
+    ],
+    "brand": {
+        "brand": "amg",
+        "brandId": []
+    },
+    "metadata": {
+        "displayName": "single_bundle_6_channel",
+        "displayCategory": "reservoir",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 127,
+        "yDimension": 86,
+        "zDimension": 20
+    },
+    "wells": {
+        "A1": {
+            "depth": 18,
+            "totalLiquidVolume": 9500,
+            "shape": "rectangular",
+            "xDimension": 10,
+            "yDimension": 70,
+            "x": 15,
+            "y": 41,
+            "z": 2
+        },
+        "A2": {
+            "depth": 18,
+            "totalLiquidVolume": 9500,
+            "shape": "rectangular",
+            "xDimension": 10,
+            "yDimension": 70,
+            "x": 35,
+            "y": 41,
+            "z": 2
+        },
+        "A3": {
+            "depth": 18,
+            "totalLiquidVolume": 9500,
+            "shape": "rectangular",
+            "xDimension": 10,
+            "yDimension": 70,
+            "x": 55,
+            "y": 41,
+            "z": 2
+        },
+        "A4": {
+            "depth": 18,
+            "totalLiquidVolume": 9500,
+            "shape": "rectangular",
+            "xDimension": 10,
+            "yDimension": 70,
+            "x": 75,
+            "y": 41,
+            "z": 2
+        },
+        "A5": {
+            "depth": 18,
+            "totalLiquidVolume": 9500,
+            "shape": "rectangular",
+            "xDimension": 10,
+            "yDimension": 70,
+            "x": 95,
+            "y": 41,
+            "z": 2
+        },
+        "A6": {
+            "depth": 18,
+            "totalLiquidVolume": 9500,
+            "shape": "rectangular",
+            "xDimension": 10,
+            "yDimension": 70,
+            "x": 115,
+            "y": 41,
+            "z": 2
+        }
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "u"
+            },
+            "wells": [
+                "A1",
+                "A2",
+                "A3",
+                "A4",
+                "A5",
+                "A6"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [
+            "centerMultichannelOnWells",
+            "touchTipDisabled"
+        ],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "single_bundle_6_channel"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}

@@ -50,7 +50,7 @@ from io import StringIO
 from opentrons.protocol_api import ProtocolContext, InstrumentContext
 from typing import Dict, Any, List, Union
 from opentrons import protocol_api
-from opentrons.protocol_api import SINGLE, COLUMN, ROW, PARTIAL_COLUMN
+from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN
 
 @dataclass
 class SampleParameters:
@@ -159,7 +159,6 @@ def validate_sample_parameters(samples, fill_mode: str = "row") -> tuple[bool, s
             return False, f"Sample {sid}: temperature must be 0-100°C, got {temp}"
 
     return True, "All samples valid"
-    return True, "All samples valid"
 
 
 def samples_to_volume_lists(samples, fill_mode: str = "row") -> tuple[list[float], list[float]]:
@@ -205,32 +204,45 @@ class Quasi2DProtocol:
         if self.fill_mode == "column":
             return plate.columns()[index]
         return plate.rows()[index]
+    
+    def _get_tips_config(self, n, tiprack):
+        """Return tip pickup configuration based on number of tips.
+        start nozzle: H1
+        Possible end nozzles are: G1, F1, E1, D1, C1, B1 | 2, 3, 4, 5, 6, 7
 
-    def configure_single_layout(self, tiprack) -> None:
-        self.pip300.configure_nozzle_layout(
-            style=SINGLE,
-            start="A1",
-            tip_racks=[tiprack],
-        )
-
-    def configure_column_layout(self, tiprack) -> None:
-        self.pip300.configure_nozzle_layout(
-            style=PARTIAL_COLUMN,
-            start="H1",
-            tip_racks=tiprack,
-        )
-
+        """
+        if n == 1:
+            return {"style": SINGLE, "tip_racks": [tiprack]}
+        elif n == 2:
+             return {"style": PARTIAL_COLUMN, "start": "H1", "end": "G1", "tip_racks": [tiprack]}
+        elif n == 3:
+             return {"style": PARTIAL_COLUMN, "start": "H1", "end": "F1", "tip_racks": [tiprack]}   
+        elif n == 4:
+            return {"style": PARTIAL_COLUMN, "start": "H1", "end": "E1", "tip_racks": [tiprack]}
+        elif n == 5:
+            return {"style": PARTIAL_COLUMN, "start": "H1", "end": "D1", "tip_racks": [tiprack]}
+        elif n == 6:
+            return {"style": PARTIAL_COLUMN, "start": "H1", "end": "C1", "tip_racks": [tiprack]}
+        elif n == 7:
+            return {"style": PARTIAL_COLUMN, "start": "H1", "end": "B1", "tip_racks": [tiprack]}
+        else:
+            raise ValueError(f"Unsupported batch size for tip configuration: {n}")
+        
+        
     def transfer_precursor_multi(
         self,
         dest_plate,
         volumes: List[float],
         source_reservoir,
+        tiprack,
         source_well_index: int = 0,
         dest_index: int = 0,
     ) -> None:
         """Transfer per-well volumes from one reservoir well to all destination wells."""
         if len(volumes) != self.n_wells:
             raise ValueError(f"volumes must be list of {self.n_wells} for {self.fill_mode} mode, got {len(volumes)}")
+
+        self.pip300.configure_nozzle_layout(style=PARTIAL_COLUMN, start="H1", end="G1", tip_racks=[tiprack])
 
         source = source_reservoir.wells()[source_well_index]
         dest_wells = self._get_wells(dest_plate, dest_index)
@@ -242,38 +254,43 @@ class Quasi2DProtocol:
                 self.pip300.dispense(vol, well)
         self.pip300.drop_tip()
 
-    def multi_transfer(self,
+    def transfer_precursor_batch(self,
         dest_plate,
         volumes: List[float],
         source_reservoir,
+        tiprack,
         source_well_index: int = 0,
         dest_index: int = 0,
+        n: int = 2,
     ) -> None:
-        """Each experiment has two repeats. So, transfer two at a time using partial pick up for one percursor. """
+        """Transfer to first well of each n-well group, picking up tips at matching skip positions."""
+        self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
+
         source = source_reservoir.wells()[source_well_index]
-        rep1_wells = self._get_wells(dest_plate, dest_index)
-        rep2_wells = self._get_wells(dest_plate, dest_index + 1)
+        dest_wells = self._get_wells(dest_plate, dest_index)
+        tips = tiprack.columns()[0][::-n]  # H1, F1, D1, B1 for n=2
 
-        self.pip300.pick_up_tip()
-        for well_a, well_b, vol in zip(rep1_wells, rep2_wells, volumes):
+        for j, i in enumerate(range(0, len(volumes), n)):
+            vol = volumes[i]
             if vol > 0:
-                self.pip300.aspirate(vol * 2, source)
-                self.pip300.dispense(vol, well_a)
-                self.pip300.dispense(vol, well_b)
-        self.pip300.drop_tip()
-
-
+                self.pip300.pick_up_tip(tips[j])
+                self.pip300.aspirate(vol, source)
+                self.pip300.dispense(vol, dest_wells[i])
+                self.pip300.drop_tip()
 
     def mix_wells_per_sample(
         self,
         dest_plate,
         mix_cycles_list: List[int],
+        tiprack,
         mix_volume: float = 100,
         dest_index: int = 0,
     ) -> None:
         """Mix each well with per-sample cycle counts."""
         if len(mix_cycles_list) != self.n_wells:
             raise ValueError(f"mix_cycles_list must be {self.n_wells} items for {self.fill_mode} mode, got {len(mix_cycles_list)}")
+
+        self.pip300.configure_nozzle_layout(style=PARTIAL_COLUMN, start="H1", end="G1", tip_racks=[tiprack])
 
         for well, cycles in zip(self._get_wells(dest_plate, dest_index), mix_cycles_list):
             if cycles > 0:
@@ -282,19 +299,42 @@ class Quasi2DProtocol:
                 self.pip300.drop_tip()
 
 
+    def mix_wells_column(
+        self,
+        dest_plate,
+        mix_cycles_list: List[int],
+        mix_volume: float = 100,
+        dest_index: int = 0,
+    ) -> None:
+        """Pick up a full column of tips and mix all 8 wells simultaneously."""
+        if len(mix_cycles_list) != self.n_wells:
+            raise ValueError(f"mix_cycles_list must be {self.n_wells} items for {self.fill_mode} mode, got {len(mix_cycles_list)}")
+
+        col_wells = self._get_wells(dest_plate, dest_index)
+        cycles = max(mix_cycles_list)
+
+        self.pip300.pick_up_tip()
+        self.pip300.mix(cycles, mix_volume, col_wells[0])
+        self.pip300.drop_tip()
+
+
     def drop_cast_multi(
         self,
         source_plate,
         dest_plate,
+        tiprack,
         volume: float = 5,
         nwells: int = 8,
+        n: int = 2,
     ) -> None:
-        """Drop cast from source plate to destination plate using p20_multi_gen2 (8-channel)."""
+        """Drop cast picking up 2 tips at a time, aspirating from first well of each pair."""
+        self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
         src_cols = source_plate.columns()[:nwells]
         dst_cols = dest_plate.columns()[:nwells]
+        tips = tiprack.columns()[0][::-n]  # H1, F1, D1, B1 for n=2
 
-        for src_col, dst_col in zip(src_cols, dst_cols):
-            self.pip20.pick_up_tip()
+        for j, (src_col, dst_col) in enumerate(zip(src_cols, dst_cols)):
+            self.pip20.pick_up_tip(tips[j])
             self.pip20.aspirate(volume, src_col[0])
             self.pip20.dispense(volume, dst_col[0])
             self.pip20.drop_tip()
@@ -326,8 +366,8 @@ def run(protocol):
     # -----------------------
     # Tipracks
     # -----------------------
-    tiprack_300 = protocol.load_labware("opentrons_96_tiprack_300ul", "7")
-    tiprack_20 = protocol.load_labware("opentrons_96_tiprack_20ul", "8")
+    tiprack_300 = protocol.load_labware("opentrons_96_tiprack_300ul", "11")
+    tiprack_20 = protocol.load_labware("opentrons_96_tiprack_20ul", "10")
 
     # -----------------------
     # INSTRUMENT
@@ -340,10 +380,10 @@ def run(protocol):
     # -----------------------
     # Plates and Reservoirs
     # -----------------------
-    reservoir = protocol.load_labware("nest_12_reservoir_15ml", "4")
+    reservoir = protocol.load_labware("nest_12_reservoir_15ml", "7")
     reservoir.set_offset(x=0, y=0, z=5)
 
-    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "5")
+    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "8")
     plate_96.set_offset(x=0, y=0, z=3)
 
     plate_film, film_wells = set_custom_heater(protocol, '3')
@@ -370,21 +410,19 @@ def run(protocol):
     protocol.comment("=== Starting MOF Protocol ===")
 
     protocol.comment("Step 1.1: Transferring precursor A sample-specific volumes...")
-    mof.configure_single_layout(tiprack_300)
-    mof.transfer_precursor_multi(plate_96, vol_a_list, reservoir, source_well_index=0, dest_index=FILL_INDEX)
+    mof.transfer_precursor_batch(plate_96, vol_a_list, reservoir, tiprack_300, source_well_index=0, dest_index=FILL_INDEX)
     protocol.comment("Transfer precursor A completed!")
 
     protocol.comment("Step 1.2: Transferring precursor B sample-specific volumes...")
-    mof.configure_single_layout(tiprack_300)
-    mof.transfer_precursor_multi(plate_96, vol_b_list, reservoir, source_well_index=1, dest_index=FILL_INDEX)
+    mof.transfer_precursor_batch(plate_96, vol_b_list, reservoir, tiprack_300, source_well_index=1, dest_index=FILL_INDEX)
     protocol.comment("Transfer precursor B completed!")
 
     protocol.comment("Step 2: Mixing samples with sample-specific parameters...")
-    mof.mix_wells_per_sample(plate_96, mix_cycles_list, mix_volume=50, dest_index=FILL_INDEX)
+    mof.mix_wells_column(plate_96, mix_cycles_list, mix_volume=50, dest_index=FILL_INDEX)
     protocol.comment("Mixing completed!")
 
     protocol.comment("Step 3: Drop casting...")
-    mof.drop_cast_multi(plate_96, plate_film, volume=5)
+    mof.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
     protocol.comment("Drop casting completed!")
 
     protocol.comment("=== Protocol Complete ===")
