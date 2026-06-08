@@ -8,7 +8,6 @@ import json
 
 # csv_raw = get_values("input_csv")[0]
 
-
 SAMPLE_DATA = json.loads("""
 [
     {"sample_id": 1, "vol_a": 100, "vol_b": 50, "time": 30, "temperature": 25},
@@ -51,6 +50,10 @@ from opentrons.protocol_api import ProtocolContext, InstrumentContext
 from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN
+
+# import custom labware definition for single bundle 6 channel reservoir
+with open("custom_labware/single_bundle_6_channel.json") as f:
+    labware_def = json.load(f)
 
 @dataclass
 class SampleParameters:
@@ -317,7 +320,6 @@ class Quasi2DProtocol:
         self.pip300.mix(cycles, mix_volume, col_wells[0])
         self.pip300.drop_tip()
 
-
     def drop_cast_multi(
         self,
         source_plate,
@@ -333,10 +335,10 @@ class Quasi2DProtocol:
         dst_cols = dest_plate.columns()[:nwells]
         tips = tiprack.columns()[0][::-n]  # H1, F1, D1, B1 for n=2
 
-        for j, (src_col, dst_col) in enumerate(zip(src_cols, dst_cols)):
+        for j, i in enumerate(range(0, nwells, n)):
             self.pip20.pick_up_tip(tips[j])
-            self.pip20.aspirate(volume, src_col[0])
-            self.pip20.dispense(volume, dst_col[0])
+            self.pip20.aspirate(volume, src_cols[i][0])
+            self.pip20.dispense(volume, dst_cols[i][0])
             self.pip20.drop_tip()
 
 def set_custom_heater(protocol, slot):
@@ -364,10 +366,10 @@ def set_custom_heater(protocol, slot):
 
 def run(protocol):
     # -----------------------
-    # Tipracks
+    # Tipracks — row 3: pickup A1-ref ~265mm, row 4 empty → within Y bounds
     # -----------------------
-    tiprack_300 = protocol.load_labware("opentrons_96_tiprack_300ul", "11")
-    tiprack_20 = protocol.load_labware("opentrons_96_tiprack_20ul", "10")
+    tiprack_300 = protocol.load_labware("opentrons_96_tiprack_300ul", "7")
+    tiprack_20 = protocol.load_labware("opentrons_96_tiprack_20ul", "8")
 
     # -----------------------
     # INSTRUMENT
@@ -378,15 +380,15 @@ def run(protocol):
     mof = Quasi2DProtocol(pip300, pip20, fill_mode=FILL_MODE)
 
     # -----------------------
-    # Plates and Reservoirs
+    # Plates and Reservoirs — row 1: A1-ref ~80-130mm, row 2 empty → safe
     # -----------------------
-    reservoir = protocol.load_labware("nest_12_reservoir_15ml", "7")
+    reservoir = protocol.load_labware_from_definition(labware_def, "1")
     reservoir.set_offset(x=0, y=0, z=5)
 
-    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "8")
+    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "2")
     plate_96.set_offset(x=0, y=0, z=3)
 
-    plate_film, film_wells = set_custom_heater(protocol, '3')
+    plate_film, film_wells = set_custom_heater(protocol, '9')
 
     # -----------------------
     # MAIN
@@ -426,3 +428,12 @@ def run(protocol):
     protocol.comment("Drop casting completed!")
 
     protocol.comment("=== Protocol Complete ===")
+
+# Working Layout
+    '''
+    [ 10 empty    ]  [ 11 empty    ]  [ trash  ]
+    [  7 tiprack_300 ]  [  8 tiprack_20  ]  [  9 plate_film ]
+    [  4 empty    ]  [  5 empty    ]  [  6 empty  ]
+    [  1 reservoir ]  [  2 plate_96  ]  [  3 empty  ]
+
+    '''
