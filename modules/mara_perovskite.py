@@ -53,9 +53,15 @@ from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 
 def _load_labware_def(protocol=None):
     """Load the custom reservoir definition from extra_labware or local file."""
-    _key = "custom_beta/single_bundle_6_channel/1"
-    if protocol is not None and hasattr(protocol, "extra_labware") and _key in protocol.extra_labware:
-        return protocol.extra_labware[_key]
+    if protocol is not None and hasattr(protocol, "extra_labware"):
+        extra = protocol.extra_labware
+        protocol.comment(f"DEBUG extra_labware keys: {list(extra.keys())}")
+        for defn in extra.values():
+            try:
+                if defn.get("parameters", {}).get("loadName") == "single_bundle_6_channel":
+                    return defn
+            except (AttributeError, TypeError):
+                pass
     _candidates = [Path("single_bundle_6_channel.json"), Path("custom_labware/single_bundle_6_channel.json")]
     try:
         _here = Path(__file__).parent
