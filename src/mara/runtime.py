@@ -227,6 +227,18 @@ class CapyClient:
         r = self._request("GET", f"/protocols/{protocol_id}")
         return Envelope[Protocol].model_validate(r.json()).data
 
+    def wait_for_analysis(self, protocol_id: str, *, poll_interval: float = 1.0, timeout: float = 60.0) -> Protocol:
+        """Poll until protocol analysis is no longer pending. Raises TimeoutError if it takes too long."""
+        deadline = time.time() + timeout
+        while True:
+            p = self.get_protocol(protocol_id)
+            statuses = [s.get("status") for s in p.analysisSummaries]
+            if statuses and all(s != "pending" for s in statuses):
+                return p
+            if time.time() > deadline:
+                raise TimeoutError(f"Analysis still pending after {timeout}s: {statuses}")
+            time.sleep(poll_interval)
+
     def create_run(
         self,
         protocol_id: str,
