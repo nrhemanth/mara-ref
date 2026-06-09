@@ -203,6 +203,26 @@ class CapyClient:
 
         return Envelope[Protocol].model_validate(r.json()).data
 
+    def upload_protocol_with_files(
+        self,
+        protocol_path: Path,
+        *extra_paths: Path,
+        protocol_kind: str = "standard",
+    ) -> Protocol:
+        """Upload a protocol + any number of supporting files (CSV, JSON, etc.)."""
+        handles = [open(p, "rb") for p in [protocol_path, *extra_paths]]
+        mime = {"py": "text/x-python", "csv": "text/csv", "json": "application/json"}
+        try:
+            files = [
+                ("files", (p.name, fh, mime.get(p.suffix.lstrip("."), "application/octet-stream")))
+                for p, fh in zip([protocol_path, *extra_paths], handles)
+            ]
+            r = self._request("POST", "/protocols", files=files, data={"protocolKind": protocol_kind})
+        finally:
+            for fh in handles:
+                fh.close()
+        return Envelope[Protocol].model_validate(r.json()).data
+
     def get_protocol(self, protocol_id: str) -> Protocol:
         r = self._request("GET", f"/protocols/{protocol_id}")
         return Envelope[Protocol].model_validate(r.json()).data
