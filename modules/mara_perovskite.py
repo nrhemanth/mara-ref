@@ -51,12 +51,19 @@ from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 
-try:
-    with open("single_bundle_6_channel.json") as f:
-        labware_def = json.load(f)
-except FileNotFoundError:
-    with open("custom_labware/single_bundle_6_channel.json") as f:
-        labware_def = json.load(f)
+_here = Path(__file__).parent
+_labware_candidates = [
+    _here / "single_bundle_6_channel.json",
+    _here / "custom_labware" / "single_bundle_6_channel.json",
+    _here.parent / "custom_labware" / "single_bundle_6_channel.json",
+]
+for _p in _labware_candidates:
+    if _p.exists():
+        with open(_p) as f:
+            labware_def = json.load(f)
+        break
+else:
+    raise FileNotFoundError("single_bundle_6_channel.json not found")
 
 @dataclass
 class SampleParameters:
