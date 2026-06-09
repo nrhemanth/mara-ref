@@ -51,12 +51,16 @@ from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 
-_here = Path(__file__).parent
-_labware_candidates = [
-    _here / "single_bundle_6_channel.json",
-    _here / "custom_labware" / "single_bundle_6_channel.json",
-    _here.parent / "custom_labware" / "single_bundle_6_channel.json",
-]
+_labware_candidates = [Path("single_bundle_6_channel.json"), Path("custom_labware/single_bundle_6_channel.json")]
+try:
+    _here = Path(__file__).parent
+    _labware_candidates += [
+        _here / "single_bundle_6_channel.json",
+        _here / "custom_labware" / "single_bundle_6_channel.json",
+        _here.parent / "custom_labware" / "single_bundle_6_channel.json",
+    ]
+except NameError:
+    pass
 for _p in _labware_candidates:
     if _p.exists():
         with open(_p) as f:
