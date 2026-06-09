@@ -14,8 +14,8 @@ import os
 import sys
 from pathlib import Path
 
-from capybara.preflight import confirm_deck_state
-from capybara.runtime import CapyClient, TERMINAL_STATUSES
+from mara.preflight import confirm_deck_state
+from mara.runtime import CapyClient, TERMINAL_STATUSES
 
 HERE = Path(__file__).resolve().parent
 

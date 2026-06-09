@@ -194,12 +194,10 @@ class CapyClient:
             r = self._request(
                 "POST",
                 "/protocols",
-                files={
-                    # main protocol file
-                    "files": (protocol_path.name,protocol_fh,"text/x-python",),
-
-                    # attached CSV file
-                    "attachments": (csv_path.name,csv_fh,"text/csv",),},
+                files=[
+                    ("files", (protocol_path.name, protocol_fh, "text/x-python")),
+                    ("files", (csv_path.name, csv_fh, "text/csv")),
+                ],
                 data={"protocolKind": protocol_kind},
             )
 
