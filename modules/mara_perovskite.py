@@ -268,15 +268,14 @@ class Quasi2DProtocol:
 
         source = source_reservoir.wells()[source_well_index]
         dest_wells = self._get_wells(dest_plate, dest_index)
-        tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
 
-        for j, i in enumerate(range(0, len(volumes), n)):
+        self.pip300.pick_up_tip()
+        for i in range(0, len(volumes), n):
             vol = volumes[i]
             if vol > 0:
-                self.pip300.pick_up_tip(tips[j])
                 self.pip300.aspirate(vol, source)
                 self.pip300.dispense(vol, dest_wells[i + n - 1])
-                self.pip300.drop_tip()
+        self.pip300.drop_tip()
 
     def mix_wells_per_sample(
         self,
@@ -328,16 +327,18 @@ class Quasi2DProtocol:
         volume: float = 5,
         nwells: int = 8,
         n: int = 2,
+        source_index: int = 0,
     ) -> None:
-        """Drop cast picking up 2 tips at a time, aspirating from first well of each pair."""
+        """Drop cast picking up 2 tips at a time, aspirating from B1, D1, F1, H1 of source column."""
         self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
-        src_cols = source_plate.columns()[:nwells]
+        src_wells = self._get_wells(source_plate, source_index)  # A1-H1 of the source column
+        src_aspirate = src_wells[n-1::n]                         # B1, D1, F1, H1 for n=2
         dst_cols = dest_plate.columns()[:nwells]
-        tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
+        #tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
 
         for j, i in enumerate(range(0, nwells, n)):
-            self.pip20.pick_up_tip(tips[j])
-            self.pip20.aspirate(volume, src_cols[i + n - 1][0])
+            self.pip20.pick_up_tip()
+            self.pip20.aspirate(volume, src_aspirate[j])
             self.pip20.dispense(volume, dst_cols[i + n - 1][0])
             self.pip20.drop_tip()
 
@@ -368,9 +369,9 @@ def run(protocol):
     # Working Layout
     '''
     [ 10 empty    ]  [ 11 empty    ]  [ trash  ]
-    [  7 tiprack_300 ]  [  8 tiprack_20  ]  [  9 plate_film ]
+    [  7 tiprack_300 ]  [  8 tiprack_20  ]  [  9 empty ]
     [  4 empty    ]  [  5 empty    ]  [  6 empty  ]
-    [  1 reservoir ]  [  2 plate_96  ]  [  3 empty  ]
+    [  1 reservoir ]  [  2 plate_96  ]  [  3 film_plate  ]
 
     '''
 
