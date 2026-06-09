@@ -52,8 +52,20 @@ from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN
 
 # import custom labware definition for single bundle 6 channel reservoir
-with open("custom_labware/single_bundle_6_channel.json") as f:
-    labware_def = json.load(f)
+try: 
+    with open("custom_labware/single_bundle_6_channel.json", "r", encoding="utf-8") as f:
+        labware_def = json.load(f)
+except FileNotFoundError:
+    #raise FileNotFoundError("Custom labware definition not found: custom_labware/single_bundle_6_channel.json")
+    pass
+
+try: 
+    with open("single_bundle_6_channel.json", "r", encoding="utf-8") as f:
+        labware_def = json.load(f)
+except FileNotFoundError:
+    pass
+    #raise FileNotFoundError("Custom labware definition not found: \labware\single_bundle_6_channel.json")
+
 
 @dataclass
 class SampleParameters:
@@ -365,6 +377,15 @@ def set_custom_heater(protocol, slot):
 
 
 def run(protocol):
+    # Working Layout
+    '''
+    [ 10 empty    ]  [ 11 empty    ]  [ trash  ]
+    [  7 tiprack_300 ]  [  8 tiprack_20  ]  [  9 plate_film ]
+    [  4 empty    ]  [  5 empty    ]  [  6 empty  ]
+    [  1 reservoir ]  [  2 plate_96  ]  [  3 empty  ]
+
+    '''
+
     # -----------------------
     # Tipracks — row 3: pickup A1-ref ~265mm, row 4 empty → within Y bounds
     # -----------------------
@@ -382,13 +403,17 @@ def run(protocol):
     # -----------------------
     # Plates and Reservoirs — row 1: A1-ref ~80-130mm, row 2 empty → safe
     # -----------------------
-    reservoir = protocol.load_labware_from_definition(labware_def, "1")
-    reservoir.set_offset(x=0, y=0, z=5)
-
     plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "2")
     plate_96.set_offset(x=0, y=0, z=3)
 
-    plate_film, film_wells = set_custom_heater(protocol, '9')
+    plate_film, film_wells = set_custom_heater(protocol, '3')
+
+
+    protocol.comment("ABOUT TO LOAD CUSTOM LABWARE")
+    #reservoir = protocol.load_labware_from_definition(labware_def, "1")
+    #reservoir = protocol.load_labware("single_bundle_6_channel", "1")
+    reservoir = protocol.load_labware(load_name="single_bundle_6_channel",location="1",namespace="opentrons",version=1)
+    reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
     # MAIN
@@ -429,11 +454,3 @@ def run(protocol):
 
     protocol.comment("=== Protocol Complete ===")
 
-# Working Layout
-    '''
-    [ 10 empty    ]  [ 11 empty    ]  [ trash  ]
-    [  7 tiprack_300 ]  [  8 tiprack_20  ]  [  9 plate_film ]
-    [  4 empty    ]  [  5 empty    ]  [  6 empty  ]
-    [  1 reservoir ]  [  2 plate_96  ]  [  3 empty  ]
-
-    '''
