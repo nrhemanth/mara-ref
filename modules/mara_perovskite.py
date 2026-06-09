@@ -51,27 +51,12 @@ from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN
 
-SINGLE_BUNDLE_6_CHANNEL_DEF = {
-    "ordering": [["A1"],["A2"],["A3"],["A4"],["A5"],["A6"]],
-    "brand": {"brand": "amg", "brandId": []},
-    "metadata": {"displayName": "single_bundle_6_channel", "displayCategory": "reservoir", "displayVolumeUnits": "µL", "tags": []},
-    "dimensions": {"xDimension": 127, "yDimension": 86, "zDimension": 20},
-    "wells": {
-        "A1": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 15, "y": 41, "z": 2},
-        "A2": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 35, "y": 41, "z": 2},
-        "A3": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 55, "y": 41, "z": 2},
-        "A4": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 75, "y": 41, "z": 2},
-        "A5": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 95, "y": 41, "z": 2},
-        "A6": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 115, "y": 41, "z": 2},
-    },
-    "groups": [{"metadata": {"wellBottomShape": "u"}, "wells": ["A1","A2","A3","A4","A5","A6"]}],
-    "parameters": {"format": "irregular", "quirks": ["centerMultichannelOnWells", "touchTipDisabled"], "isTiprack": False, "isMagneticModuleCompatible": False, "loadName": "single_bundle_6_channel"},
-    "namespace": "custom_beta",
-    "version": 1,
-    "schemaVersion": 2,
-    "cornerOffsetFromSlot": {"x": 0, "y": 0, "z": 0},
-}
-
+try:
+    with open("single_bundle_6_channel.json") as f:
+        labware_def = json.load(f)
+except FileNotFoundError:
+    with open("custom_labware/single_bundle_6_channel.json") as f:
+        labware_def = json.load(f)
 
 @dataclass
 class SampleParameters:
@@ -415,7 +400,7 @@ def run(protocol):
     plate_film, film_wells = set_custom_heater(protocol, '3')
 
 
-    reservoir = protocol.load_labware_from_definition(SINGLE_BUNDLE_6_CHANNEL_DEF, "1")
+    reservoir = protocol.load_labware_from_definition(labware_def, "1")
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
