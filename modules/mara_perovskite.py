@@ -51,32 +51,6 @@ from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 
-def _load_labware_def(protocol=None):
-    """Load the custom reservoir definition from extra_labware or local file."""
-    if protocol is not None and hasattr(protocol, "extra_labware"):
-        extra = protocol.extra_labware
-        protocol.comment(f"DEBUG extra_labware keys: {list(extra.keys())}")
-        for defn in extra.values():
-            try:
-                if defn.get("parameters", {}).get("loadName") == "single_bundle_6_channel":
-                    return defn
-            except (AttributeError, TypeError):
-                pass
-    _candidates = [Path("single_bundle_6_channel.json"), Path("custom_labware/single_bundle_6_channel.json")]
-    try:
-        _here = Path(__file__).parent
-        _candidates += [
-            _here / "single_bundle_6_channel.json",
-            _here / "custom_labware" / "single_bundle_6_channel.json",
-            _here.parent / "custom_labware" / "single_bundle_6_channel.json",
-        ]
-    except NameError:
-        pass
-    for _p in _candidates:
-        if _p.exists():
-            with open(_p) as f:
-                return json.load(f)
-    raise FileNotFoundError("single_bundle_6_channel.json not found")
 
 @dataclass
 class SampleParameters:
@@ -423,8 +397,7 @@ def run(protocol):
     plate_film, film_wells = set_custom_heater(protocol, '3')
 
 
-    labware_def = _load_labware_def(protocol)
-    reservoir = protocol.load_labware_from_definition(labware_def, "1")
+    reservoir = protocol.load_labware("single_bundle_6_channel", "1", namespace="custom_beta", version=1)
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
