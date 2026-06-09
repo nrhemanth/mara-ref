@@ -289,14 +289,14 @@ class Quasi2DProtocol:
 
         source = source_reservoir.wells()[source_well_index]
         dest_wells = self._get_wells(dest_plate, dest_index)
-        tips = tiprack.columns()[0][::-n]  # H1, F1, D1, B1 for n=2
+        tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
 
         for j, i in enumerate(range(0, len(volumes), n)):
             vol = volumes[i]
             if vol > 0:
                 self.pip300.pick_up_tip(tips[j])
                 self.pip300.aspirate(vol, source)
-                self.pip300.dispense(vol, dest_wells[i])
+                self.pip300.dispense(vol, dest_wells[i + n - 1])
                 self.pip300.drop_tip()
 
     def mix_wells_per_sample(
@@ -324,12 +324,15 @@ class Quasi2DProtocol:
         self,
         dest_plate,
         mix_cycles_list: List[int],
+        tiprack,
         mix_volume: float = 100,
         dest_index: int = 0,
     ) -> None:
         """Pick up a full column of tips and mix all 8 wells simultaneously."""
         if len(mix_cycles_list) != self.n_wells:
             raise ValueError(f"mix_cycles_list must be {self.n_wells} items for {self.fill_mode} mode, got {len(mix_cycles_list)}")
+
+        self.pip300.configure_nozzle_layout(style=ALL, tip_racks=[tiprack])
 
         col_wells = self._get_wells(dest_plate, dest_index)
         cycles = max(mix_cycles_list)
@@ -351,12 +354,12 @@ class Quasi2DProtocol:
         self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
         src_cols = source_plate.columns()[:nwells]
         dst_cols = dest_plate.columns()[:nwells]
-        tips = tiprack.columns()[0][::-n]  # H1, F1, D1, B1 for n=2
+        tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
 
         for j, i in enumerate(range(0, nwells, n)):
             self.pip20.pick_up_tip(tips[j])
-            self.pip20.aspirate(volume, src_cols[i][0])
-            self.pip20.dispense(volume, dst_cols[i][0])
+            self.pip20.aspirate(volume, src_cols[i + n - 1][0])
+            self.pip20.dispense(volume, dst_cols[i + n - 1][0])
             self.pip20.drop_tip()
 
 def set_custom_heater(protocol, slot):
@@ -415,7 +418,7 @@ def run(protocol):
     plate_film, film_wells = set_custom_heater(protocol, '3')
 
 
-    reservoir = protocol.load_labware_from_definition(SINGLE_BUNDLE_6_CHANNEL_DEF, "1")
+    reservoir = protocol.load_labware_from_definition(labware_def, "1")
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
@@ -448,7 +451,7 @@ def run(protocol):
     protocol.comment("Transfer precursor B completed!")
 
     protocol.comment("Step 2: Mixing samples with sample-specific parameters...")
-    mof.mix_wells_column(plate_96, mix_cycles_list, mix_volume=50, dest_index=FILL_INDEX)
+    mof.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
     protocol.comment("Mixing completed!")
 
     protocol.comment("Step 3: Drop casting...")
