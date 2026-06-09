@@ -51,22 +51,25 @@ from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 
-_labware_candidates = [Path("single_bundle_6_channel.json"), Path("custom_labware/single_bundle_6_channel.json")]
-try:
-    _here = Path(__file__).parent
-    _labware_candidates += [
-        _here / "single_bundle_6_channel.json",
-        _here / "custom_labware" / "single_bundle_6_channel.json",
-        _here.parent / "custom_labware" / "single_bundle_6_channel.json",
-    ]
-except NameError:
-    pass
-for _p in _labware_candidates:
-    if _p.exists():
-        with open(_p) as f:
-            labware_def = json.load(f)
-        break
-else:
+def _load_labware_def(protocol=None):
+    """Load the custom reservoir definition from extra_labware or local file."""
+    _key = "custom_beta/single_bundle_6_channel/1"
+    if protocol is not None and hasattr(protocol, "extra_labware") and _key in protocol.extra_labware:
+        return protocol.extra_labware[_key]
+    _candidates = [Path("single_bundle_6_channel.json"), Path("custom_labware/single_bundle_6_channel.json")]
+    try:
+        _here = Path(__file__).parent
+        _candidates += [
+            _here / "single_bundle_6_channel.json",
+            _here / "custom_labware" / "single_bundle_6_channel.json",
+            _here.parent / "custom_labware" / "single_bundle_6_channel.json",
+        ]
+    except NameError:
+        pass
+    for _p in _candidates:
+        if _p.exists():
+            with open(_p) as f:
+                return json.load(f)
     raise FileNotFoundError("single_bundle_6_channel.json not found")
 
 @dataclass
@@ -414,6 +417,7 @@ def run(protocol):
     plate_film, film_wells = set_custom_heater(protocol, '3')
 
 
+    labware_def = _load_labware_def(protocol)
     reservoir = protocol.load_labware_from_definition(labware_def, "1")
     reservoir.set_offset(x=0, y=0, z=5)
 
