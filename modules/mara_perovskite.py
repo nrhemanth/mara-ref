@@ -298,7 +298,6 @@ class Quasi2DProtocol:
                 self.pip300.mix(cycles, mix_volume, well)
                 self.pip300.drop_tip()
 
-
     def mix_wells_column(
         self,
         dest_plate,
@@ -328,7 +327,7 @@ class Quasi2DProtocol:
         tiprack,
         volume: float = 5,
         n: int = 2,
-        source_index: int = 0,
+        source_index: int = 1,
     ) -> None:
         self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
         src_wells = self._get_wells(source_plate, source_index)
@@ -341,10 +340,8 @@ class Quasi2DProtocol:
 
         for j in range(0, len(active_keys), n):
             self.pip20.pick_up_tip()
-            for offset in range(n):
-                if j + offset < len(active_keys):
-                    self.pip20.aspirate(volume, src_wells[j + offset])
-                    self.pip20.dispense(volume, dst_locations[j + offset])
+            self.pip20.aspirate(volume, src_wells[j + n - 2])
+            self.pip20.dispense(volume, dst_locations[j])
             self.pip20.drop_tip()
 
 
@@ -466,17 +463,17 @@ def run(protocol):
 
     protocol.comment("=== Starting MOF Protocol ===")
 
-    # protocol.comment("Step 1.1: Transferring precursor A sample-specific volumes...")
-    # mof.transfer_precursor_batch(plate_96, vol_a_list, reservoir, tiprack_300, source_well_index=0, dest_index=FILL_INDEX)
-    # protocol.comment("Transfer precursor A completed!")
+    protocol.comment("Step 1.1: Transferring precursor A sample-specific volumes...")
+    mof.transfer_precursor_batch(plate_96, vol_a_list, reservoir, tiprack_300, source_well_index=0, dest_index=FILL_INDEX)
+    protocol.comment("Transfer precursor A completed!")
 
-    # protocol.comment("Step 1.2: Transferring precursor B sample-specific volumes...")
-    # mof.transfer_precursor_batch(plate_96, vol_b_list, reservoir, tiprack_300, source_well_index=1, dest_index=FILL_INDEX)
-    # protocol.comment("Transfer precursor B completed!")
+    protocol.comment("Step 1.2: Transferring precursor B sample-specific volumes...")
+    mof.transfer_precursor_batch(plate_96, vol_b_list, reservoir, tiprack_300, source_well_index=1, dest_index=FILL_INDEX)
+    protocol.comment("Transfer precursor B completed!")
 
-    # protocol.comment("Step 2: Mixing samples with sample-specific parameters...")
-    # mof.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
-    # protocol.comment("Mixing completed!")
+    protocol.comment("Step 2: Mixing samples with sample-specific parameters...")
+    mof.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
+    protocol.comment("Mixing completed!")
 
     protocol.comment("Step 3: Drop casting...")
     mof.drop_cast_multi(plate_96, plate_film, film_wells, tiprack_20, volume=5)
