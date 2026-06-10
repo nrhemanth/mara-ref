@@ -342,28 +342,6 @@ class Quasi2DProtocol:
             self.pip20.dispense(volume, dst_cols[i + n - 1][0])
             self.pip20.drop_tip()
 
-def set_custom_heater(protocol, slot):
-    # heater offsets for dropcasting on to rectangle 12 samples
-    # diameter o f96 = 7.0mm
-    heater_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
-    heater_plate.set_offset(x=-5, y=32, z=87) # Z lowered by 1 mm
-    hs_offsets = {
-        1: ('B2',  (-1.0,  +0.0 , -1.4)),
-        2: ('B5',  (-1.0,  +0.0 , -1.4)),
-        3: ('B8',  (-1.0,  +0.0 , -1.4)),
-        4: ('B11', (-1.0,  +0.0 , -1.4)),
-        5: ('E2',  (-1.0,  +0.0 , -1.4)),
-        6: ('E5',  (-1.0,  +0.0 , -1.4)),
-        7: ('E8',  (-1.0,  +0.0 , -1.4)),
-        8: ('E11', (-1.0,  +0.0 , -1.4)),
-        9: ('H2',  (-1.0,  -1.0 , -1.4)),
-        10:('H5',  (-1.0,  -1.0 , -1.4)),
-        11:('H8',  (-1.0,  -1.0 , -1.4)),
-        12:('H11', (-1.0,  -1.0 , -1.4))
-    }
-
-    return heater_plate, hs_offsets
-
 
 def run(protocol):
     # Working Layout
@@ -395,11 +373,33 @@ def run(protocol):
     plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "2")
     plate_96.set_offset(x=0, y=0, z=3)
 
-    plate_film, film_wells = set_custom_heater(protocol, '3')
+    def set_custom_heater(protocol, slot):
+        # heater offsets for dropcasting on to rectangle 12 samples
+        # diameter o f96 = 7.0mm
+        heater_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
+        heater_plate.set_offset(x=-5, y=32, z=140) # Z lowered by 1 mm
+        hs_offsets = {
+            1: ('B2',  (-1.0,  +0.0 , -1.4)),
+            2: ('B5',  (-1.0,  +0.0 , -1.4)),
+            3: ('B8',  (-1.0,  +0.0 , -1.4)),
+            4: ('B11', (-1.0,  +0.0 , -1.4)),
+            5: ('E2',  (-1.0,  +0.0 , -1.4)),
+            6: ('E5',  (-1.0,  +0.0 , -1.4)),
+            7: ('E8',  (-1.0,  +0.0 , -1.4)),
+            8: ('E11', (-1.0,  +0.0 , -1.4)),
+            9: ('H2',  (-1.0,  -1.0 , -1.4)),
+            10:('H5',  (-1.0,  -1.0 , -1.4)),
+            11:('H8',  (-1.0,  -1.0 , -1.4)),
+            12:('H11', (-1.0,  -1.0 , -1.4))
+        }
 
+        return heater_plate, hs_offsets
+
+    plate_film, film_wells = set_custom_heater(protocol, '3')
+    
 
     reservoir = protocol.load_labware("single_bundle_6_channel", "1", namespace="custom_beta", version=1)
-    reservoir.set_offset(x=0, y=0, z=5)
+    reservoir.set_offset(x=0, y=0, z=8)
 
     # -----------------------
     # MAIN
@@ -422,20 +422,20 @@ def run(protocol):
 
     protocol.comment("=== Starting MOF Protocol ===")
 
-    protocol.comment("Step 1.1: Transferring precursor A sample-specific volumes...")
-    mof.transfer_precursor_batch(plate_96, vol_a_list, reservoir, tiprack_300, source_well_index=0, dest_index=FILL_INDEX)
-    protocol.comment("Transfer precursor A completed!")
+    # protocol.comment("Step 1.1: Transferring precursor A sample-specific volumes...")
+    # mof.transfer_precursor_batch(plate_96, vol_a_list, reservoir, tiprack_300, source_well_index=0, dest_index=FILL_INDEX)
+    # protocol.comment("Transfer precursor A completed!")
 
-    protocol.comment("Step 1.2: Transferring precursor B sample-specific volumes...")
-    mof.transfer_precursor_batch(plate_96, vol_b_list, reservoir, tiprack_300, source_well_index=1, dest_index=FILL_INDEX)
-    protocol.comment("Transfer precursor B completed!")
+    # protocol.comment("Step 1.2: Transferring precursor B sample-specific volumes...")
+    # mof.transfer_precursor_batch(plate_96, vol_b_list, reservoir, tiprack_300, source_well_index=1, dest_index=FILL_INDEX)
+    # protocol.comment("Transfer precursor B completed!")
 
-    protocol.comment("Step 2: Mixing samples with sample-specific parameters...")
-    mof.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
-    protocol.comment("Mixing completed!")
+    # protocol.comment("Step 2: Mixing samples with sample-specific parameters...")
+    # mof.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
+    # protocol.comment("Mixing completed!")
 
     protocol.comment("Step 3: Drop casting...")
-    mof.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
+    mof.drop_cast_multi(plate_96, film_wells, tiprack_20, volume=5)
     protocol.comment("Drop casting completed!")
 
     protocol.comment("=== Protocol Complete ===")
