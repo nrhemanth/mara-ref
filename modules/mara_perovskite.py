@@ -327,7 +327,7 @@ class Quasi2DProtocol:
         tiprack,
         volume: float = 5,
         n: int = 2,
-        source_index: int = 1,
+        source_index: int = 0,
     ) -> None:
         self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
         src_wells = self._get_wells(source_plate, source_index)
@@ -340,7 +340,7 @@ class Quasi2DProtocol:
 
         for j in range(0, len(active_keys), n):
             self.pip20.pick_up_tip()
-            self.pip20.aspirate(volume, src_wells[j + n - 2])
+            self.pip20.aspirate(volume, src_wells[j + n - 1])
             self.pip20.dispense(volume, dst_locations[j])
             self.pip20.drop_tip()
 
