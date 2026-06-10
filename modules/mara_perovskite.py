@@ -50,6 +50,7 @@ from opentrons.protocol_api import ProtocolContext, InstrumentContext
 from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
+from opentrons.types import Point
 
 
 @dataclass
@@ -212,7 +213,7 @@ class Quasi2DProtocol:
 
         """
         if n == 1:
-            return {"style": SINGLE, "tip_racks": [tiprack]}
+            return {"style": SINGLE, "start": "A1", "tip_racks": [tiprack]}
         elif n == 2:
              return {"style": PARTIAL_COLUMN, "start": "H1", "end": "G1", "tip_racks": [tiprack]}
         elif n == 3:
@@ -323,25 +324,90 @@ class Quasi2DProtocol:
         self,
         source_plate,
         dest_plate,
+        dest_wells,
         tiprack,
         volume: float = 5,
-        nwells: int = 8,
         n: int = 2,
         source_index: int = 0,
     ) -> None:
-        """Drop cast picking up 2 tips at a time, aspirating from B1, D1, F1, H1 of source column."""
         self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
-        src_wells = self._get_wells(source_plate, source_index)  # A1-H1 of the source column
-        src_aspirate = src_wells[n-1::n]                         # B1, D1, F1, H1 for n=2
-        dst_cols = dest_plate.columns()[:nwells]
-        #tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
+        src_wells = self._get_wells(source_plate, source_index)
 
-        for j, i in enumerate(range(0, nwells, n)):
+        active_keys = sorted(dest_wells.keys())[:len(src_wells)]
+        dst_locations = [
+            dest_plate.wells_by_name()[dest_wells[k][0]].bottom().move(Point(dest_wells[k][1][0], dest_wells[k][1][1], 0.5))
+            for k in active_keys
+        ]
+
+        for j in range(0, len(active_keys), n):
             self.pip20.pick_up_tip()
-            self.pip20.aspirate(volume, src_aspirate[j])
-            self.pip20.dispense(volume, dst_cols[i + n - 1][0])
+            for offset in range(n):
+                if j + offset < len(active_keys):
+                    self.pip20.aspirate(volume, src_wells[j + offset])
+                    self.pip20.dispense(volume, dst_locations[j + offset])
             self.pip20.drop_tip()
 
+
+    def drop_cast_single(
+        self,
+        source_plate,
+        dest_plate,
+        dest_wells,
+        tiprack,
+        volume: float = 5,
+        source_index: int = 0,
+    ) -> None:
+        self.pip20.configure_nozzle_layout(**self._get_tips_config(1, tiprack))
+        src_wells = self._get_wells(source_plate, source_index)
+        active_keys = sorted(dest_wells.keys())[:len(src_wells)]
+
+        for idx, sample_num in enumerate(active_keys):
+            well_name, (ox, oy, _) = dest_wells[sample_num]
+            dst_location = dest_plate.wells_by_name()[well_name].bottom().move(Point(ox, oy, 0.5))
+            self.pip20.pick_up_tip()
+            self.pip20.aspirate(volume, src_wells[idx])
+            self.pip20.dispense(volume, dst_location)
+            self.pip20.drop_tip()
+
+def set_custom_heater_12(protocol, slot):
+    # heater offsets for dropcasting on to rectangle 12 samples
+    # diameter o f96 = 7.0mm
+    heater_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
+    heater_plate.set_offset(x=-5, y=32, z=90) # Z lowered by 1 mm
+    hs_offsets = {
+        1: ('B2',  (-1.0,  +0.0 , -1.4)),
+        2: ('B5',  (-1.0,  +0.0 , -1.4)),
+        3: ('B8',  (-1.0,  +0.0 , -1.4)),
+        4: ('B11', (-1.0,  +0.0 , -1.4)),
+        5: ('E2',  (-1.0,  +0.0 , -1.4)),
+        6: ('E5',  (-1.0,  +0.0 , -1.4)),
+        7: ('E8',  (-1.0,  +0.0 , -1.4)),
+        8: ('E11', (-1.0,  +0.0 , -1.4)),
+        9: ('H2',  (-1.0,  -1.0 , -1.4)),
+        10:('H5',  (-1.0,  -1.0 , -1.4)),
+        11:('H8',  (-1.0,  -1.0 , -1.4)),
+        12:('H11', (-1.0,  -1.0 , -1.4))
+    }
+
+    return heater_plate, hs_offsets
+
+def set_custom_heater_8(protocol, slot):
+    # heater offsets for dropcasting on to rectangle 12 samples
+    # diameter o f96 = 7.0mm
+    heater_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
+    heater_plate.set_offset(x=-5, y=32, z=90) # Z lowered by 1 mm
+    hs_offsets = {
+        1: ('B2',  (-1.0,  +0.0 , -1.4)),
+        2: ('B5',  (-1.0,  +0.0 , -1.4)),
+        3: ('B8',  (-1.0,  +0.0 , -1.4)),
+        4: ('B11', (-1.0,  +0.0 , -1.4)),
+        5: ('F2',  (-1.0,  +0.0 , -1.4)),
+        6: ('F5',  (-1.0,  +0.0 , -1.4)),
+        7: ('F8',  (-1.0,  +0.0 , -1.4)),
+        8: ('F11', (-1.0,  +0.0 , -1.4)),
+    }
+
+    return heater_plate, hs_offsets
 
 def run(protocol):
     # Working Layout
@@ -373,29 +439,7 @@ def run(protocol):
     plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "2")
     plate_96.set_offset(x=0, y=0, z=3)
 
-    def set_custom_heater(protocol, slot):
-        # heater offsets for dropcasting on to rectangle 12 samples
-        # diameter o f96 = 7.0mm
-        heater_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
-        heater_plate.set_offset(x=-5, y=32, z=140) # Z lowered by 1 mm
-        hs_offsets = {
-            1: ('B2',  (-1.0,  +0.0 , -1.4)),
-            2: ('B5',  (-1.0,  +0.0 , -1.4)),
-            3: ('B8',  (-1.0,  +0.0 , -1.4)),
-            4: ('B11', (-1.0,  +0.0 , -1.4)),
-            5: ('E2',  (-1.0,  +0.0 , -1.4)),
-            6: ('E5',  (-1.0,  +0.0 , -1.4)),
-            7: ('E8',  (-1.0,  +0.0 , -1.4)),
-            8: ('E11', (-1.0,  +0.0 , -1.4)),
-            9: ('H2',  (-1.0,  -1.0 , -1.4)),
-            10:('H5',  (-1.0,  -1.0 , -1.4)),
-            11:('H8',  (-1.0,  -1.0 , -1.4)),
-            12:('H11', (-1.0,  -1.0 , -1.4))
-        }
-
-        return heater_plate, hs_offsets
-
-    plate_film, film_wells = set_custom_heater(protocol, '3')
+    plate_film, film_wells = set_custom_heater_8(protocol, '3')
     
 
     reservoir = protocol.load_labware("single_bundle_6_channel", "1", namespace="custom_beta", version=1)
@@ -435,7 +479,7 @@ def run(protocol):
     # protocol.comment("Mixing completed!")
 
     protocol.comment("Step 3: Drop casting...")
-    mof.drop_cast_multi(plate_96, film_wells, tiprack_20, volume=5)
+    mof.drop_cast_multi(plate_96, plate_film, film_wells, tiprack_20, volume=5)
     protocol.comment("Drop casting completed!")
 
     protocol.comment("=== Protocol Complete ===")
