@@ -1,6 +1,3 @@
-#hp rct5 (Hot plate, IKA RCT5)
-
-
 def set_opentron_heater(self, slot):
         # Load heater
         self.hs_mod = self.protocol.load_module("heaterShakerModuleV1", slot)

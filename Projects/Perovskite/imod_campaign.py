@@ -1,6 +1,6 @@
 # modules/campaign.py
-from modules.formulations import Formulations
-from modules.drop_casting import DropCasting
+from modules.ot2.formulations import Formulations
+from modules.ot2.drop_casting import DropCasting
 from src.mara.utils import add_material
 import pandas as pd
 
