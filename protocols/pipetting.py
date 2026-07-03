@@ -6,7 +6,7 @@
 # Rule: if it calls pipette.aspirate / dispense / mix / move → it lives here.
 #       if it calls protocol.load_labware / load_instrument   → it lives in ot2.py.
 
-from hardware.ot2 import OT2Controller
+from Projects.Perovskite.hardware.ot2 import OT2Controller
 from opentrons import protocol_api
 from opentrons.types import Point
 

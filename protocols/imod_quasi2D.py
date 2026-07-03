@@ -1,7 +1,7 @@
 # protocols/IMOD_quasi2D.py
-from campaigns.imod_campaign import IMODCampaign
-from hardware.kamome import KamomeController
-from hardware.lite6 import Lite6Controller
+from Projects.Perovskite.imod_campaign import IMODCampaign
+from Projects.Perovskite.hardware.kamome import KamomeController
+from Projects.Perovskite.hardware.lite6 import Lite6Controller
 from utils import load_conditions
 
 CONDITIONS_URL   = "http://192.168.0.140:8000/conditions.csv"
