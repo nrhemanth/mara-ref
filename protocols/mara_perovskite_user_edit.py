@@ -13,6 +13,37 @@ from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 from opentrons.types import Point
 
+
+# ---------------------------------------------------------------------------
+# Experiment parameters
+# Anything you might want to change between runs lives here at the top,
+# not buried in the run() function.
+# ---------------------------------------------------------------------------
+
+# CSV served from the shared folder computer on the lab network.
+# Start the server with: cd Mara_shared && python -m http.server 8000
+CONDITIONS_URL = "http://192.168.0.140:8000/conditions.csv"
+
+# Which columns in the CSV map to the three source solutions (in order):
+# source well A1 → BAAc, B1 → MAI, C1 → PbI2
+SOLUTION_COLUMNS = ["BAAc_vol", "MAI_vol", "PbI2_vol"]
+
+# Tip to start from for the mixing step.
+# Change this if the run is resuming partway through a tip rack.
+MIX_TIP_START = "A1"
+
+# Drop-casting volumes (µL)
+ASPIRATE_VOL = 5    # how much to pull up from the 96-well plate
+DROP_VOL     = 1.5  # how much to deposit on the substrate
+
+ # Set True to jog the p20 (single tip) through all 16 film-plate spots, pausing at each one, instead of running the full protocol.
+TEST_FILM_PLATE_POSITIONS = False 
+
+requirements = {"robotType": "OT-2", "apiLevel": "2.20"}
+
+FILL_MODE = "column"
+FILL_INDEX = 0
+
 SAMPLE_DATA = json.loads("""
 [
     {"sample_id": 1, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "time": 30, "temperature": 25},
@@ -34,33 +65,12 @@ SAMPLE_DATA = json.loads("""
 ]
 """)
 
-
-requirements = {"robotType": "OT-2", "apiLevel": "2.20"}
-
-FILL_MODE = "column"
-FILL_INDEX = 0
-
-SINGLE_BUNDLE_6_CHANNEL_DEF = {
-    "ordering": [["A1"],["A2"],["A3"],["A4"],["A5"],["A6"]],
-    "brand": {"brand": "amg", "brandId": []},
-    "metadata": {"displayName": "single_bundle_6_channel", "displayCategory": "reservoir", "displayVolumeUnits": "µL", "tags": []},
-    "dimensions": {"xDimension": 127, "yDimension": 86, "zDimension": 20},
-    "wells": {
-        "A1": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 15, "y": 41, "z": 2},
-        "A2": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 35, "y": 41, "z": 2},
-        "A3": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 55, "y": 41, "z": 2},
-        "A4": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 75, "y": 41, "z": 2},
-        "A5": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 95, "y": 41, "z": 2},
-        "A6": {"depth": 18, "totalLiquidVolume": 9500, "shape": "rectangular", "xDimension": 10, "yDimension": 70, "x": 115, "y": 41, "z": 2},
-    },
-    "groups": [{"metadata": {"wellBottomShape": "u"}, "wells": ["A1","A2"]}],
-    "parameters": {"format": "irregular", "quirks": ["centerMultichannelOnWells", "touchTipDisabled"], "isTiprack": False, "isMagneticModuleCompatible": False, "loadName": "single_bundle_6_channel"},
-    "namespace": "custom_beta",
-    "version": 1,
-    "schemaVersion": 2,
-    "cornerOffsetFromSlot": {"x": 0, "y": 0, "z": 0},
+PRECURSORS = json.loads("""{
+    "PbI2": {"name": "PbI2", "well_index": 0, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "BAAc": {"name": "BAAc", "well_index": 1, "volume": 9500, "concentration": 0.5, "solvent": "DMF:DMSO"},
+    "MAI":  {"name": "MAI",  "well_index": 2, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
-
+""")
 
 @dataclass
 class SampleParameters:
@@ -72,7 +82,22 @@ class SampleParameters:
     time: float   # Mixing time in seconds
     temperature: float  # Temperature in °C
 
+@dataclass
+class Precursor:
+    """Container for a single precursor's parameters."""
+    name: str
+    well_index: int  # Index of the well in the reservoir (0-based)
+    volume: float  # Volume in µL
+    concentration: float  # Concentration in Molarity (M)
+    solvent: str  # Solvent used for the precursor
 
+def get_precursor(name: str) -> Precursor:
+    """Look up a precursor by name."""
+    if name not in PRECURSORS:
+        raise ValueError(f"Unknown precursor: {name}. Available: {list(PRECURSORS)}")
+    return Precursor(**PRECURSORS[name])
+
+#--- Functions for sample parameter validation and conversion ---#
 def validate_sample_parameters(samples: List[SampleParameters], fill_mode: str = "row") -> Tuple[bool, str]:
     """Validate sample parameters."""
     if not samples:
@@ -99,7 +124,6 @@ def validate_sample_parameters(samples: List[SampleParameters], fill_mode: str =
 
     return True, "All samples valid"
 
-
 def samples_to_volume_lists(samples: List[SampleParameters], fill_mode: str = "row", index: int = 0) -> Tuple[List[float], List[float], List[float]]:
     """Convert one column/row's worth of sample parameters to volume lists."""
     n = 8 if fill_mode == "column" else 12
@@ -115,7 +139,6 @@ def samples_to_volume_lists(samples: List[SampleParameters], fill_mode: str = "r
 
     return vol_pbi2_list[:n], vol_baac_list[:n], vol_mai_list[:n]
 
-
 def samples_to_mix_cycles(samples: List[SampleParameters], cycles_per_second: int = 3, fill_mode: str = "row", index: int = 0) -> List[int]:
     """Convert one column/row's worth of sample times to mix cycles."""
     n = 8 if fill_mode == "column" else 12
@@ -129,31 +152,20 @@ def samples_to_mix_cycles(samples: List[SampleParameters], cycles_per_second: in
     return mix_cycles_list[:n]
 
 
-def confirm_step(protocol: protocol_api.ProtocolContext, step_name: str) -> bool:
-    """Pause the robot, then ask in the terminal whether to run the next step.
+def should_run(step_name: str, execute: bool = True) -> bool:
+    """Ask for a Y/N answer on whether to run a step, for local debugging.
 
-    protocol.pause() halts hardware motion and, on the Opentrons App, shows a
-    Resume/Cancel prompt so the plate/tips/reservoirs can be inspected first
-    (it does not let you change Python variables mid-run, just resume or stop).
-    The y/n prompt below requires a live terminal attached to the process
-    (e.g. `opentrons_execute`/`opentrons_simulate` run directly over SSH) --
-    if the protocol is started purely from the Opentrons App, there is no
-    stdin for input() to read, so after Resume this will hang forever
-    waiting for an answer that can never arrive. Only use this entry point
-    when you're running from a terminal.
+    Uses input(), so this requires an attached terminal (e.g. running via
+    opentrons_simulate on a laptop) — it will not work from the robot/App,
+    unlike protocol.pause().
     """
-    protocol.pause(
-        f"About to run {step_name}. Inspect the plate/tips/reservoirs if needed, "
-        f"then press Resume to continue or Cancel/Stop to terminate the run."
-    )
-    while True:
-        answer = input(f"Proceed with {step_name}? [y/n]: ").strip().lower()
-        if answer in ("y", "yes"):
-            return True
-        if answer in ("n", "no"):
-            return False
-        print("Please enter y or n.")
+    if not execute:
+        return False
+    answer = input(f"Run {step_name}? [Y/n]: ").strip().lower()
+    return answer in ("", "y", "yes")
 
+
+#--- Functions for sample parameter validation and conversion ---#
 class Quasi2DProtocol:
     def __init__(self, pip300, pip20, fill_mode: str = "row"):
         self.pip300 = pip300
@@ -234,13 +246,13 @@ class Quasi2DProtocol:
         dest_wells = self._get_wells(dest_plate, dest_index)
         tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
 
-        for j, i in enumerate(range(0, len(volumes), n)):
+        self.pip300.pick_up_tip(tips[0])
+        for i in range(0, len(volumes), n):
             vol = volumes[i]
             if vol > 0:
-                self.pip300.pick_up_tip(tips[j])
                 self.pip300.aspirate(vol, source)
                 self.pip300.dispense(vol, dest_wells[i + n - 1])
-                self.pip300.drop_tip()
+        self.pip300.drop_tip()
 
     def mix_wells_per_sample(
         self,
@@ -337,14 +349,16 @@ def set_film_plate_16(protocol, slot, pitch: float = 25.0, x_offset: float = Non
     a PCR plate is loaded purely to get a stable deck reference frame — set_offset
     plus x_offset/y_offset/z_offset are what actually align the grid to the physical
     plate. Defaults center the 4x4 grid (25 mm pitch) on a 100 mm square.
-    Use Quasi2DProtocol.test_film_plate_positions() to dial these in."""
+    Use Quasi2DProtocol.test_film_plate_positions() to dial these in.
+    The plate is placed ontop of a heater, hence the z offset is z = 87 mm (heater top).
+    """
     if x_offset is None:
         x_offset = pitch / 2
     if y_offset is None:
         y_offset = pitch / 2
 
     plate_film = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
-    plate_film.set_offset(x=0, y=0, z=0)
+    plate_film.set_offset(x=5, y=32, z=87)
 
     anchor = plate_film['A1']
     film_wells = {}
@@ -376,11 +390,10 @@ def set_custom_heater(protocol, slot):
         11:('H8',  (-1.0,  -1.0 , -1.4)),
         12:('H11', (-1.0,  -1.0 , -1.4))
     }
-
     return heater_plate, hs_offsets
 
 
-def run(protocol):
+def run(protocol):        
     # Working Layout
     '''
     [ 10 heater   ]  [ 11 heater   ]  [ trash  ]
@@ -389,11 +402,6 @@ def run(protocol):
     [  1 empty ]  [  2 tiprack_20  ]  [  3 tiprack_300 ] ]
 
     '''
-
-    # Set True to jog the p20 (single tip) through all 16 film-plate spots,
-    # pausing at each one, instead of running the full protocol.
-    TEST_FILM_PLATE_POSITIONS = False
-
     # -----------------------
     # Tipracks — slot 2: tiprack_20, slot 3: tiprack_300
     # -----------------------
@@ -406,7 +414,7 @@ def run(protocol):
     pip20 = protocol.load_instrument('p20_multi_gen2', mount='right', tip_racks=[tiprack_20])
     pip300 = protocol.load_instrument('p300_multi_gen2', mount='left', tip_racks=[tiprack_300])
 
-    film = Quasi2DProtocol(pip300, pip20, fill_mode=FILL_MODE)
+    film = Quasi2DProtocol(pip300, pip20, fill_mode=FILL_MODE) # set class for quasi 2D protocol
 
     # -----------------------
     # Plates and Reservoirs — slot 5: plate_96, slot 6: reservoir, slot 7: film_plate
@@ -416,7 +424,7 @@ def run(protocol):
 
     plate_film, film_wells = set_film_plate_16(protocol, "7")
 
-    reservoir = protocol.load_labware_from_definition(SINGLE_BUNDLE_6_CHANNEL_DEF, "6")
+    reservoir = protocol.load_labware("opentrons_tough_4_reservoir_72ml", "6")
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
@@ -441,35 +449,39 @@ def run(protocol):
 
     protocol.comment("=== Starting film Protocol ===")
 
-    if confirm_step(protocol, "Step 1.1: transferring PbI2"):
-        film.transfer_precursor_batch(plate_96, vol_pbi2_list, reservoir, tiprack_300, source_well_index=0, dest_index=FILL_INDEX)
-        protocol.comment("Transfer PbI2 completed!")
-    else:
-        protocol.comment("Skipped PbI2 transfer")
+    pbi2 = get_precursor("PbI2")
+    baac = get_precursor("BAAc")
+    mai = get_precursor("MAI")
 
-    if confirm_step(protocol, "Step 1.2: transferring BAAc"):
-        film.transfer_precursor_batch(plate_96, vol_baac_list, reservoir, tiprack_300, source_well_index=1, dest_index=FILL_INDEX)
-        protocol.comment("Transfer BAAc completed!")
-    else:
-        protocol.comment("Skipped BAAc transfer")
+    #if should_run(f"Step 1.1: transferring {pbi2.name}"):
+    film.transfer_precursor_batch(plate_96, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index, dest_index=FILL_INDEX)
+    protocol.comment(f"Transfer {pbi2.name} completed!")
+    #else:
+    #protocol.comment(f"Skipped {pbi2.name} transfer")
 
-    if confirm_step(protocol, "Step 1.3: transferring MAI"):
-        film.transfer_precursor_batch(plate_96, vol_mai_list, reservoir, tiprack_300, source_well_index=2, dest_index=FILL_INDEX)
-        protocol.comment("Transfer MAI completed!")
-    else:
-        protocol.comment("Skipped MAI transfer")
+    #if should_run(f"Step 1.2: transferring {baac.name}"):
+    film.transfer_precursor_batch(plate_96, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index, dest_index=FILL_INDEX)
+    protocol.comment(f"Transfer {baac.name} completed!")
+    #else:
+        #protocol.comment(f"Skipped {baac.name} transfer")
 
-    if confirm_step(protocol, "Step 2: mixing"):
-        film.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
-        protocol.comment("Mixing completed!")
-    else:
-        protocol.comment("Skipped mixing")
+    #if should_run(f"Step 1.3: transferring {mai.name}"):
+    film.transfer_precursor_batch(plate_96, vol_mai_list, reservoir, tiprack_300, source_well_index=mai.well_index, dest_index=FILL_INDEX)
+    protocol.comment(f"Transfer {mai.name} completed!")
+    #else:
+    #    protocol.comment(f"Skipped {mai.name} transfer")
 
-    if confirm_step(protocol, "Step 3: drop casting"):
-        film.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
-        protocol.comment("Drop casting completed!")
-    else:
-        protocol.comment("Skipped drop casting")
+    #if should_run("Step 2: mixing"):
+    film.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
+    protocol.comment("Mixing completed!")
+    #else:
+    #protocol.comment("Skipped mixing")
+
+    #if should_run("Step 3: drop casting"):
+    film.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
+    protocol.comment("Drop casting completed!")
+    #else:
+    #    protocol.comment("Skipped drop casting")
 
     protocol.comment("=== Protocol Complete ===")
 
