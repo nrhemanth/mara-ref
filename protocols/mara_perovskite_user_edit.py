@@ -6,12 +6,43 @@ from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 import os
 from io import StringIO
-    
+from datetime import datetime, timedelta
+import time
+import threading
+
 from opentrons.protocol_api import ProtocolContext, InstrumentContext
 from typing import Dict, Any, List, Union
 from opentrons import protocol_api
 from opentrons.protocol_api import SINGLE, PARTIAL_COLUMN, ALL
 from opentrons.types import Point
+
+
+# ---------------------------------------------------------------------------
+# Pickup timer -- inlined here (rather than imported from mara.utils) so this
+# protocol file has no dependency on the rest of the repo being installed.
+# Only tracks wall-clock time in this local Python process, so it's only
+# meaningful when running via opentrons_execute with a terminal attached --
+# not when uploaded through the Opentrons App.
+# ---------------------------------------------------------------------------
+active_timers = {}
+
+class TimerThread(threading.Thread):
+    def __init__(self, material_id, duration_min):
+        super().__init__()
+        self.material_id = material_id
+        self.duration = timedelta(minutes=duration_min)
+        self.start_time = datetime.now()
+        self.end_time = self.start_time + self.duration
+
+    def run(self):
+        time.sleep(self.duration.total_seconds())
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Material {self.material_id} is done!")
+
+def add_material(material_id, duration_min):
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Timer started for {material_id} ({duration_min} min)")
+    thread = TimerThread(material_id, duration_min)
+    active_timers[material_id] = thread
+    thread.start()
 
 
 # ---------------------------------------------------------------------------
@@ -72,22 +103,22 @@ FILL_MODE = "column"
 
 SAMPLE_DATA = json.loads("""
 [
-    {"sample_id": 1, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "time": 30, "temperature": 25},
-    {"sample_id": 2, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "time": 30, "temperature": 25},
-    {"sample_id": 3, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "time": 35, "temperature": 25},
-    {"sample_id": 4, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "time": 30, "temperature": 25},
-    {"sample_id": 5, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "time": 30, "temperature": 25},
-    {"sample_id": 6, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "time": 35, "temperature": 25},
-    {"sample_id": 7, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "time": 30, "temperature": 25},
-    {"sample_id": 8, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "time": 35, "temperature": 25},
-    {"sample_id": 9, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "time": 30, "temperature": 25},
-    {"sample_id": 10, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "time": 30, "temperature": 25},
-    {"sample_id": 11, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "time": 35, "temperature": 25},
-    {"sample_id": 12, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "time": 30, "temperature": 25},
-    {"sample_id": 13, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "time": 30, "temperature": 25},
-    {"sample_id": 14, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "time": 35, "temperature": 25},
-    {"sample_id": 15, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "time": 30, "temperature": 25},
-    {"sample_id": 16, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "time": 35, "temperature": 25}
+    {"sample_id": 1, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 2, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 3, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 4, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 5, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 6, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 7, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1},
+    {"sample_id": 8, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1},
+    {"sample_id": 9, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 10, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 11, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 12, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 13, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 14, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
+    {"sample_id": 15, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1},
+    {"sample_id": 16, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1}
 ]
 """)
 
@@ -105,8 +136,8 @@ class SampleParameters:
     vol_PbI2: float  # Volume of PbI2 precursor in µL
     vol_BAAc: float  # Volume of BAAc precursor in µL
     vol_MAI: float   # Volume of MAI precursor in µL
-    time: float   # Mixing time in seconds
     temperature: float  # Temperature in °C
+    anneal_min: float  # How long after drop-casting this sample can be picked up, in minutes
 
 @dataclass
 class Precursor:
@@ -133,9 +164,9 @@ def validate_sample_parameters(samples: List[SampleParameters], fill_mode: str =
         vol_pbi2 = sample.vol_PbI2
         vol_baac = sample.vol_BAAc
         vol_mai = sample.vol_MAI
-        time = sample.time
         temp = sample.temperature
         sid = sample.sample_id
+        anneal_min = sample.anneal_min
 
         if vol_pbi2 < 0 or vol_pbi2 > 200:
             return False, f"Sample {sid}: vol_PbI2 must be 0-200 µL, got {vol_pbi2}"
@@ -143,10 +174,10 @@ def validate_sample_parameters(samples: List[SampleParameters], fill_mode: str =
             return False, f"Sample {sid}: vol_BAAc must be 0-200 µL, got {vol_baac}"
         if vol_mai < 0 or vol_mai > 200:
             return False, f"Sample {sid}: vol_MAI must be 0-200 µL, got {vol_mai}"
-        if time < 0 or time > 300:
-            return False, f"Sample {sid}: time must be 0-300s, got {time}"
         if temp < 0 or temp > 100:
             return False, f"Sample {sid}: temperature must be 0-100°C, got {temp}"
+        if anneal_min < 0 or anneal_min > 180:
+            return False, f"Sample {sid}: anneal_min must be 0-180 min, got {anneal_min}"
 
     return True, "All samples valid"
 
@@ -276,19 +307,34 @@ class Quasi2DProtocol:
         tiprack,
         volume: float = 5,
         hover_seconds: float = 3,
+        sample_ids: list = None,
+        anneal_mins: list = None,
     ) -> None:
         """Drop cast one film-plate spot at a time: one source well per spot,
         one tip picked up and dropped per drop. source_wells must line up
         1:1 with the sorted film_wells keys (from set_film_plate_16). Hovers
         over each spot for hover_seconds after dispensing so the drop has
-        time to settle before the pipette moves on."""
+        time to settle before the pipette moves on.
+
+        If sample_ids/anneal_mins are given (one entry per source well, same
+        order), right after each sample's drop is dispensed this:
+          1. starts a local background pickup timer (print-only; only visible
+             when running via opentrons_execute with a terminal attached), and
+          2. calls protocol.comment() with a TIMER_START marker, which IS
+             visible remotely -- it shows up in this run's command list via
+             the Opentrons HTTP API, which is how preruns/preflight_films.py
+             computes each sample's pickup time from the instrument PC."""
         keys = sorted(film_wells.keys())
         if len(source_wells) != len(keys):
             raise ValueError(f"source_wells must have {len(keys)} items to match the film plate, got {len(source_wells)}")
+        if sample_ids is not None and len(sample_ids) != len(source_wells):
+            raise ValueError(f"sample_ids must have {len(source_wells)} items, got {len(sample_ids)}")
+        if anneal_mins is not None and len(anneal_mins) != len(source_wells):
+            raise ValueError(f"anneal_mins must have {len(source_wells)} items, got {len(anneal_mins)}")
 
         self.pip20.configure_nozzle_layout(**self._get_tips_config(1, tiprack))
 
-        for well, key in zip(source_wells, keys):
+        for i, (well, key) in enumerate(zip(source_wells, keys)):
             anchor, (ox, oy, oz) = film_wells[key]
             location = anchor.top(z=oz).move(Point(ox, oy, 0))
 
@@ -298,6 +344,10 @@ class Quasi2DProtocol:
             self.pip20.dispense(volume)
             protocol.delay(seconds=hover_seconds)
             self.pip20.drop_tip()
+
+            if sample_ids is not None and anneal_mins is not None:
+                add_material(sample_ids[i], anneal_mins[i])
+                protocol.comment(f"TIMER_START sample={sample_ids[i]} anneal_min={anneal_mins[i]}")
 
     def test_film_plate_positions(
         self,
@@ -478,7 +528,10 @@ def run(protocol):
 
     if should_run("Step 3: drop casting", RUN_DROP_CASTING):
         source_wells = plate_96.columns()[0] + plate_96.columns()[1]  # 16 wells = sample_id 1-16
-        film.drop_cast_single(protocol, source_wells, film_wells, tiprack_20, volume=DROP_VOL)
+        sample_ids = [s.sample_id for s in samples]
+        anneal_mins = [s.anneal_min for s in samples]
+        film.drop_cast_single(protocol, source_wells, film_wells, tiprack_20, volume=DROP_VOL,
+                               sample_ids=sample_ids, anneal_mins=anneal_mins)
         protocol.comment("Drop casting completed!")
     else:
         protocol.comment("Skipped drop casting")

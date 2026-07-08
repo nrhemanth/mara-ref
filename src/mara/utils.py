@@ -17,11 +17,10 @@ class TimerThread(threading.Thread):
 
     def run(self):
         time.sleep(self.duration.total_seconds())
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏰ Material {self.material_id} is done!")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Material {self.material_id} is done!")
 
-@staticmethod
 def add_material(material_id, duration_min):
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ Timer started for {material_id} ({duration_min} min)")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Timer started for {material_id} ({duration_min} min)")
     thread = TimerThread(material_id, duration_min)
     active_timers[material_id] = thread
     thread.start()
