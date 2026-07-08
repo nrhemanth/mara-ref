@@ -34,7 +34,19 @@ MIX_TIP_START = "A1"
 
 # Drop-casting volumes (µL)
 ASPIRATE_VOL = 5    # how much to pull up from the 96-well plate
-DROP_VOL     = 1.5  # how much to deposit on the substrate
+DROP_VOL     = 5  # how much to deposit on the substrate
+
+# Number of mix strokes applied to each column during Step 2 mixing.
+MIX_CYCLES = 10
+
+# Film-plate drop-cast grid, tuned via dropcast_position.py's position-check script.
+GRID_COLS = 4          # spots across (X) per row
+GRID_ROWS = 4          # spots deep (Y), within the film plate's own footprint
+GRID_PITCH = (115.0 - 22.0) / 3  # mm between adjacent spots -- 4x 22mm films spanning 12cm total edge-to-edge
+GRID_X_OFFSET = None   # mm from anchor's A1 in X; None = center on GRID_PITCH
+GRID_Y_OFFSET = None   # mm from anchor's A1 in Y; None = center on GRID_PITCH
+GRID_Z_OFFSET = -11.5   # mm added to the heater-top Z (80 mm, set in set_film_plate_16) Set at -13.0 when glass + holder
+HOVER_HEIGHT = 1.0     # mm above each spot to hover at for a visual check
 
  # Set True to jog the p20 (single tip) through all 16 film-plate spots, pausing at each one, instead of running the full protocol.
 TEST_FILM_PLATE_POSITIONS = False
@@ -42,10 +54,10 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = True
-RUN_TRANSFER_BAAC = True
-RUN_TRANSFER_MAI = True
-RUN_MIXING = True
+RUN_TRANSFER_PBI2 = False #True
+RUN_TRANSFER_BAAC = False #True
+RUN_TRANSFER_MAI = False #True
+RUN_MIXING = False #True 
 RUN_DROP_CASTING = True
 
 # Set True only when running locally via opentrons_execute/opentrons_simulate
@@ -57,7 +69,6 @@ INTERACTIVE_CONFIRM = False
 requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
 FILL_MODE = "column"
-FILL_INDEX = 0
 
 SAMPLE_DATA = json.loads("""
 [
@@ -154,18 +165,6 @@ def samples_to_volume_lists(samples: List[SampleParameters], fill_mode: str = "r
 
     return vol_pbi2_list[:n], vol_baac_list[:n], vol_mai_list[:n]
 
-def samples_to_mix_cycles(samples: List[SampleParameters], cycles_per_second: int = 3, fill_mode: str = "row", index: int = 0) -> List[int]:
-    """Convert one column/row's worth of sample times to mix cycles."""
-    n = 8 if fill_mode == "column" else 12
-    chunk = samples[index * n:(index + 1) * n]
-
-    mix_cycles_list = [max(1, int(s.time * cycles_per_second / 10)) for s in chunk]
-
-    while len(mix_cycles_list) < n:
-        mix_cycles_list.append(0)
-
-    return mix_cycles_list[:n]
-
 
 def should_run(step_name: str, preset: bool = True) -> bool:
     """Decide whether to run a step.
@@ -224,51 +223,26 @@ class Quasi2DProtocol:
         else:
             raise ValueError(f"Unsupported batch size for tip configuration: {n}")
         
-    def transfer_precursor_multi(
-        self,
-        dest_plate,
-        volumes: List[float],
-        source_reservoir,
-        tiprack,
-        source_well_index: int = 0,
-        dest_index: int = 0,
-    ) -> None:
-        """Transfer per-well volumes from one reservoir well to all destination wells."""
-        if len(volumes) != self.n_wells:
-            raise ValueError(f"volumes must be list of {self.n_wells} for {self.fill_mode} mode, got {len(volumes)}")
-
-        self.pip300.configure_nozzle_layout(style=PARTIAL_COLUMN, start="H1", end="G1", tip_racks=[tiprack])
-
-        source = source_reservoir.wells()[source_well_index]
-        dest_wells = self._get_wells(dest_plate, dest_index)
-
-        self.pip300.pick_up_tip()
-        for well, vol in zip(dest_wells, volumes):
-            if vol > 0:
-                self.pip300.aspirate(vol, source)
-                self.pip300.dispense(vol, well)
-        self.pip300.drop_tip()
-
     def transfer_precursor_batch(self,
-        dest_plate,
+        dest_wells: list,
         volumes: List[float],
         source_reservoir,
         tiprack,
         source_well_index: int = 0,
-        dest_index: int = 0,
         n: int = 2,
     ) -> None:
-        """Transfer to first well of each n-well group, picking up tips at matching skip positions."""
-        if len(volumes) != self.n_wells:
-            raise ValueError(f"volumes must be list of {self.n_wells} for {self.fill_mode} mode, got {len(volumes)}")
+        """Transfer to the last well of each n-well group across dest_wells,
+        picking up tips once and reusing them for the whole batch -- pass the
+        full flat list of wells (e.g. spanning multiple plate columns) to fill
+        them all in one pass instead of re-picking tips per column."""
+        if len(volumes) != len(dest_wells):
+            raise ValueError(f"volumes must match dest_wells length ({len(dest_wells)}), got {len(volumes)}")
 
         self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
 
         source = source_reservoir.wells()[source_well_index]
-        dest_wells = self._get_wells(dest_plate, dest_index)
-        tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
 
-        self.pip300.pick_up_tip(tips[0])
+        self.pip300.pick_up_tip()
         for i in range(0, len(volumes), n):
             vol = volumes[i]
             if vol > 0:
@@ -276,67 +250,53 @@ class Quasi2DProtocol:
                 self.pip300.dispense(vol, dest_wells[i + n - 1])
         self.pip300.drop_tip()
 
-    def mix_wells_per_sample(
-        self,
-        dest_plate,
-        mix_cycles_list: List[int],
-        tiprack,
-        mix_volume: float = 100,
-        dest_index: int = 0,
-    ) -> None:
-        """Mix each well with per-sample cycle counts."""
-        if len(mix_cycles_list) != self.n_wells:
-            raise ValueError(f"mix_cycles_list must be {self.n_wells} items for {self.fill_mode} mode, got {len(mix_cycles_list)}")
-
-        self.pip300.configure_nozzle_layout(style=PARTIAL_COLUMN, start="H1", end="G1", tip_racks=[tiprack])
-
-        for well, cycles in zip(self._get_wells(dest_plate, dest_index), mix_cycles_list):
-            if cycles > 0:
-                self.pip300.pick_up_tip()
-                self.pip300.mix(cycles, mix_volume, well)
-                self.pip300.drop_tip()
-
-
     def mix_wells_column(
         self,
         dest_plate,
-        mix_cycles_list: List[int],
+        cycles: int,
         tiprack,
         mix_volume: float = 100,
         dest_index: int = 0,
     ) -> None:
-        """Pick up a full column of tips and mix all 8 wells simultaneously."""
-        if len(mix_cycles_list) != self.n_wells:
-            raise ValueError(f"mix_cycles_list must be {self.n_wells} items for {self.fill_mode} mode, got {len(mix_cycles_list)}")
-
+        """Pick up a full column of tips and mix all 8 wells simultaneously,
+        `cycles` times."""
         self.pip300.configure_nozzle_layout(style=ALL, tip_racks=[tiprack])
 
         col_wells = self._get_wells(dest_plate, dest_index)
-        cycles = max(mix_cycles_list)
 
         self.pip300.pick_up_tip()
         self.pip300.mix(cycles, mix_volume, col_wells[0])
         self.pip300.drop_tip()
 
-    def drop_cast_multi(
+    def drop_cast_single(
         self,
-        source_plate,
-        dest_plate,
+        protocol,
+        source_wells: list,
+        film_wells: Dict[int, Any],
         tiprack,
         volume: float = 5,
-        nwells: int = 8,
-        n: int = 2,
+        hover_seconds: float = 3,
     ) -> None:
-        """Drop cast picking up 2 tips at a time, aspirating from first well of each pair."""
-        self.pip20.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
-        src_cols = source_plate.columns()[:nwells]
-        dst_cols = dest_plate.columns()[:nwells]
-        tips = tiprack.columns()[0][n-1::n]  # B1, D1, F1, H1 for n=2
+        """Drop cast one film-plate spot at a time: one source well per spot,
+        one tip picked up and dropped per drop. source_wells must line up
+        1:1 with the sorted film_wells keys (from set_film_plate_16). Hovers
+        over each spot for hover_seconds after dispensing so the drop has
+        time to settle before the pipette moves on."""
+        keys = sorted(film_wells.keys())
+        if len(source_wells) != len(keys):
+            raise ValueError(f"source_wells must have {len(keys)} items to match the film plate, got {len(source_wells)}")
 
-        for j, i in enumerate(range(0, nwells, n)):
-            self.pip20.pick_up_tip(tips[j])
-            self.pip20.aspirate(volume, src_cols[i + n - 1][0])
-            self.pip20.dispense(volume, dst_cols[i + n - 1][0])
+        self.pip20.configure_nozzle_layout(**self._get_tips_config(1, tiprack))
+
+        for well, key in zip(source_wells, keys):
+            anchor, (ox, oy, oz) = film_wells[key]
+            location = anchor.top(z=oz).move(Point(ox, oy, 0))
+
+            self.pip20.pick_up_tip()
+            self.pip20.aspirate(volume, well)
+            self.pip20.move_to(location)
+            self.pip20.dispense(volume)
+            protocol.delay(seconds=hover_seconds)
             self.pip20.drop_tip()
 
     def test_film_plate_positions(
@@ -345,12 +305,15 @@ class Quasi2DProtocol:
         plate_film,
         film_wells: Dict[int, Any],
         tiprack,
-        hover_height: float = 5.0,
+        hover_height: float = HOVER_HEIGHT,
+        pause: bool = True,
     ) -> None:
         """Pick up a single tip and step through every film-plate spot, pausing at
         each one so the position can be checked against the physical hot plate
         before running a real drop cast. Tune the offsets in film_wells (from
-        set_film_plate_16) between runs based on what you see."""
+        set_film_plate_16) between runs based on what you see. Set pause=False
+        to just delay 3s at each spot instead of blocking for manual resume
+        (e.g. for an unattended simulate/dry-run pass)."""
         self.pip20.configure_nozzle_layout(**self._get_tips_config(1, tiprack))
         self.pip20.pick_up_tip()
 
@@ -358,21 +321,34 @@ class Quasi2DProtocol:
             anchor, (ox, oy, oz) = film_wells[key]
             location = anchor.top(z=hover_height + oz).move(Point(ox, oy, 0))
             self.pip20.move_to(location)
-            protocol.pause(
-                f"Spot {key}/{len(film_wells)}: hovering at x={ox:.1f}, y={oy:.1f}, "
-                f"z={hover_height + oz:.1f} above A1. Check alignment, then resume."
-            )
+            if pause:
+                protocol.pause(
+                    f"Spot {key}/{len(film_wells)}: hovering at x={ox:.1f}, y={oy:.1f}, "
+                    f"z={hover_height + oz:.1f} above A1. Check alignment, then resume."
+                )
+            else:
+                protocol.delay(seconds=3)
 
         self.pip20.drop_tip()
 
-def set_film_plate_16(protocol, slot, pitch: float = 25.0, x_offset: float = None, y_offset: float = None, z_offset: float = -1.0):
-    """4x4 (16-spot) drop-cast grid for a 100mm x 100mm hot plate, closest to the
-    given slot. There's no Opentrons labware definition for the hot plate itself, so
-    a PCR plate is loaded purely to get a stable deck reference frame — set_offset
-    plus x_offset/y_offset/z_offset are what actually align the grid to the physical
-    plate. Defaults center the 4x4 grid (25 mm pitch) on a 100 mm square.
-    Use Quasi2DProtocol.test_film_plate_positions() to dial these in.
-    The plate is placed ontop of a heater, hence the z offset is z = 87 mm (heater top).
+def set_film_plate_16(
+    protocol,
+    slot,
+    n_cols: int = GRID_COLS,
+    n_rows: int = GRID_ROWS,
+    pitch: float = GRID_PITCH,
+    x_offset: float = GRID_X_OFFSET,
+    y_offset: float = GRID_Y_OFFSET,
+    z_offset: float = GRID_Z_OFFSET,
+):
+    """n_cols x n_rows (default 4x4, 16-spot) drop-cast grid, anchored off a PCR
+    plate loaded in the given slot purely for a stable deck reference frame --
+    there's no Opentrons labware definition for the hot plate itself, so
+    set_offset plus x_offset/y_offset/z_offset are what actually align the grid
+    to the physical plate. Row 0 sits at the anchor's A1; each following row
+    steps forward (toward the front of the deck) by `pitch`.
+    Use Quasi2DProtocol.test_film_plate_positions() (or dropcast_position.py) to
+    dial these in. The plate sits on top of a heater, hence z=83 mm below.
     """
     if x_offset is None:
         x_offset = pitch / 2
@@ -380,55 +356,35 @@ def set_film_plate_16(protocol, slot, pitch: float = 25.0, x_offset: float = Non
         y_offset = pitch / 2
 
     plate_film = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
-    plate_film.set_offset(x=5, y=32, z=87)
+    plate_film.set_offset(x=3, y=1.5, z=80)
 
     anchor = plate_film['A1']
     film_wells = {}
     key = 1
-    for row in range(4):
-        for col in range(4):
+    for row in range(n_rows):
+        for col in range(n_cols):
             x = x_offset + col * pitch
-            y = y_offset + row * pitch
+            y = y_offset - row * pitch  # negative = forward, toward the front of the deck
             film_wells[key] = (anchor, (x, y, z_offset))
             key += 1
     return plate_film, film_wells
 
-def set_custom_heater(protocol, slot):
-    # heater offsets for dropcasting on to rectangle 12 samples
-    # diameter o f96 = 7.0mm
-    heater_plate = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
-    heater_plate.set_offset(x=-5, y=32, z=87) # Z lowered by 1 mm
-    hs_offsets = {
-        1: ('B2',  (-1.0,  +0.0 , -1.4)),
-        2: ('B5',  (-1.0,  +0.0 , -1.4)),
-        3: ('B8',  (-1.0,  +0.0 , -1.4)),
-        4: ('B11', (-1.0,  +0.0 , -1.4)),
-        5: ('E2',  (-1.0,  +0.0 , -1.4)),
-        6: ('E5',  (-1.0,  +0.0 , -1.4)),
-        7: ('E8',  (-1.0,  +0.0 , -1.4)),
-        8: ('E11', (-1.0,  +0.0 , -1.4)),
-        9: ('H2',  (-1.0,  -1.0 , -1.4)),
-        10:('H5',  (-1.0,  -1.0 , -1.4)),
-        11:('H8',  (-1.0,  -1.0 , -1.4)),
-        12:('H11', (-1.0,  -1.0 , -1.4))
-    }
-    return heater_plate, hs_offsets
 
 
 def run(protocol):        
     # Working Layout
     '''
-    [ 10 heater   ]  [ 11 heater   ]  [ trash  ]
-    [  7 film_plate ]  [  8 heater  ]  [  9 heater  ]
-    [  4 empty    ]  [  5 plate_96   ]  [  6 precursor reservoir ]
-    [  1 empty ]  [  2 tiprack_20  ]  [  3 tiprack_300 ] ]
+    [ 10 empty   ]  [ 11 empty   ]  [ trash  ]
+    [  7 plate_96 ]  [  8 precursor_reservoir   ]  [  9 heater  ]
+    [  4 empty    ]  [  5 empty   ]  [  6 film_plate on heater]
+    [  1 tiprack_300 ]  [  2 tiprack_20  ]  [  3 heater ] ]
 
     '''
     # -----------------------
     # Tipracks — slot 2: tiprack_20, slot 3: tiprack_300
     # -----------------------
     tiprack_20 = protocol.load_labware("opentrons_96_tiprack_20ul", "2")
-    tiprack_300 = protocol.load_labware("opentrons_96_tiprack_300ul", "3")
+    tiprack_300 = protocol.load_labware("opentrons_96_tiprack_300ul", "1")
 
     # -----------------------
     # INSTRUMENT
@@ -441,12 +397,12 @@ def run(protocol):
     # -----------------------
     # Plates and Reservoirs — slot 5: plate_96, slot 6: reservoir, slot 7: film_plate
     # -----------------------
-    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "5")
-    plate_96.set_offset(x=0, y=0, z=3)
+    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "7")
+    plate_96.set_offset(x=0, y=0, z=5)
 
-    plate_film, film_wells = set_film_plate_16(protocol, "7")
+    plate_film, film_wells = set_film_plate_16(protocol, "6")
 
-    reservoir = protocol.load_labware("opentrons_tough_4_reservoir_72ml", "6")
+    reservoir = protocol.load_labware("opentrons_tough_4_reservoir_72ml", "8")
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
@@ -459,15 +415,17 @@ def run(protocol):
         film.test_film_plate_positions(protocol, plate_film, film_wells, tiprack_20)
         return
 
-    protocol.comment(f"=== Loading Sample Parameters (mode: {FILL_MODE}, index: {FILL_INDEX}) ===")
+    protocol.comment(f"=== Loading Sample Parameters (mode: {FILL_MODE}) ===")
     samples = [SampleParameters(**s) for s in SAMPLE_DATA]
     is_valid, msg = validate_sample_parameters(samples, fill_mode=FILL_MODE)
     if not is_valid:
         raise ValueError(msg)
     protocol.comment(f"Loaded {len(samples)} samples from JSON")
 
-    vol_pbi2_list, vol_baac_list, vol_mai_list = samples_to_volume_lists(samples, fill_mode=FILL_MODE, index=FILL_INDEX)
-    mix_cycles_list = samples_to_mix_cycles(samples, cycles_per_second=2, fill_mode=FILL_MODE, index=FILL_INDEX)
+    # Each chunk is one column (8 samples) or row (12 samples) of plate_96 --
+    # loop over every chunk so all samples get filled, not just the first one.
+    n_per_chunk = 8 if FILL_MODE == "column" else 12
+    n_chunks = -(-len(samples) // n_per_chunk)  # ceiling division
 
     protocol.comment("=== Starting film Protocol ===")
 
@@ -475,32 +433,52 @@ def run(protocol):
     baac = get_precursor("BAAc")
     mai = get_precursor("MAI")
 
+    # Concatenate every chunk's wells/volumes/cycles into one flat, 16-long
+    # list per precursor -- so each transfer step picks up tips once and
+    # fills all 16 wells in a single pass, instead of re-picking tips per
+    # plate column.
+    dest_wells_all: list = []
+    vol_pbi2_list: List[float] = []
+    vol_baac_list: List[float] = []
+    vol_mai_list: List[float] = []
+    for fill_index in range(n_chunks):
+        dest_wells_all += film._get_wells(plate_96, fill_index)
+        p, b, m = samples_to_volume_lists(samples, fill_mode=FILL_MODE, index=fill_index)
+        vol_pbi2_list += p
+        vol_baac_list += b
+        vol_mai_list += m
+
     if should_run(f"Step 1.1: transferring {pbi2.name}", RUN_TRANSFER_PBI2):
-        film.transfer_precursor_batch(plate_96, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index, dest_index=FILL_INDEX)
+        film.transfer_precursor_batch(dest_wells_all, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index)
         protocol.comment(f"Transfer {pbi2.name} completed!")
     else:
         protocol.comment(f"Skipped {pbi2.name} transfer")
 
     if should_run(f"Step 1.2: transferring {baac.name}", RUN_TRANSFER_BAAC):
-        film.transfer_precursor_batch(plate_96, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index, dest_index=FILL_INDEX)
+        film.transfer_precursor_batch(dest_wells_all, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index)
         protocol.comment(f"Transfer {baac.name} completed!")
     else:
         protocol.comment(f"Skipped {baac.name} transfer")
 
     if should_run(f"Step 1.3: transferring {mai.name}", RUN_TRANSFER_MAI):
-        film.transfer_precursor_batch(plate_96, vol_mai_list, reservoir, tiprack_300, source_well_index=mai.well_index, dest_index=FILL_INDEX)
+        film.transfer_precursor_batch(dest_wells_all, vol_mai_list, reservoir, tiprack_300, source_well_index=mai.well_index)
         protocol.comment(f"Transfer {mai.name} completed!")
     else:
         protocol.comment(f"Skipped {mai.name} transfer")
 
+    # Mixing uses a full 8-tip column pipette (style=ALL), which is physically
+    # fixed to one plate column at a time -- it can't span two columns with
+    # the same tips, so this still loops (and re-picks tips) per chunk.
     if should_run("Step 2: mixing", RUN_MIXING):
-        film.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
+        for fill_index in range(n_chunks):
+            film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=fill_index)
         protocol.comment("Mixing completed!")
     else:
-       protocol.comment("Skipped mixing")
+        protocol.comment("Skipped mixing")
 
     if should_run("Step 3: drop casting", RUN_DROP_CASTING):
-        film.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
+        source_wells = plate_96.columns()[0] + plate_96.columns()[1]  # 16 wells = sample_id 1-16
+        film.drop_cast_single(protocol, source_wells, film_wells, tiprack_20, volume=DROP_VOL)
         protocol.comment("Drop casting completed!")
     else:
         protocol.comment("Skipped drop casting")
