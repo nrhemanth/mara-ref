@@ -37,9 +37,24 @@ ASPIRATE_VOL = 5    # how much to pull up from the 96-well plate
 DROP_VOL     = 1.5  # how much to deposit on the substrate
 
  # Set True to jog the p20 (single tip) through all 16 film-plate spots, pausing at each one, instead of running the full protocol.
-TEST_FILM_PLATE_POSITIONS = False 
+TEST_FILM_PLATE_POSITIONS = False
 
-requirements = {"robotType": "OT-2", "apiLevel": "2.20"}
+# Pre-set which steps to run. Edit these before uploading to the robot: on a
+# real run through the Opentrons App there's no terminal for input() to read
+# from, so these booleans are the only way to skip a step there.
+RUN_TRANSFER_PBI2 = True
+RUN_TRANSFER_BAAC = True
+RUN_TRANSFER_MAI = True
+RUN_MIXING = True
+RUN_DROP_CASTING = True
+
+# Set True only when running locally via opentrons_execute/opentrons_simulate
+# with a terminal attached. Adds a y/n prompt on top of the presets above so
+# you can override a step on the fly; leaving it False (the safe default for
+# an actual robot run) skips the prompt entirely and just uses the presets.
+INTERACTIVE_CONFIRM = False
+
+requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
 FILL_MODE = "column"
 FILL_INDEX = 0
@@ -152,17 +167,24 @@ def samples_to_mix_cycles(samples: List[SampleParameters], cycles_per_second: in
     return mix_cycles_list[:n]
 
 
-def should_run(step_name: str, execute: bool = True) -> bool:
-    """Ask for a Y/N answer on whether to run a step, for local debugging.
+def should_run(step_name: str, preset: bool = True) -> bool:
+    """Decide whether to run a step.
 
-    Uses input(), so this requires an attached terminal (e.g. running via
-    opentrons_simulate on a laptop) — it will not work from the robot/App,
-    unlike protocol.pause().
+    `preset` is what actually controls behavior on the robot/App (set via the
+    RUN_* constants above) -- there's no terminal there for input() to read.
+
+    If INTERACTIVE_CONFIRM is True, this additionally prompts in the terminal
+    for a y/n override (only meaningful when running locally with a terminal
+    attached, e.g. via opentrons_simulate); pressing Enter with no answer
+    keeps the preset.
     """
-    if not execute:
-        return False
-    answer = input(f"Run {step_name}? [Y/n]: ").strip().lower()
-    return answer in ("", "y", "yes")
+    if not INTERACTIVE_CONFIRM:
+        return preset
+    default_label = "Y/n" if preset else "y/N"
+    answer = input(f"Run {step_name}? [{default_label}]: ").strip().lower()
+    if not answer:
+        return preset
+    return answer in ("y", "yes")
 
 
 #--- Functions for sample parameter validation and conversion ---#
@@ -453,35 +475,35 @@ def run(protocol):
     baac = get_precursor("BAAc")
     mai = get_precursor("MAI")
 
-    #if should_run(f"Step 1.1: transferring {pbi2.name}"):
-    film.transfer_precursor_batch(plate_96, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index, dest_index=FILL_INDEX)
-    protocol.comment(f"Transfer {pbi2.name} completed!")
-    #else:
-    #protocol.comment(f"Skipped {pbi2.name} transfer")
+    if should_run(f"Step 1.1: transferring {pbi2.name}", RUN_TRANSFER_PBI2):
+        film.transfer_precursor_batch(plate_96, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index, dest_index=FILL_INDEX)
+        protocol.comment(f"Transfer {pbi2.name} completed!")
+    else:
+        protocol.comment(f"Skipped {pbi2.name} transfer")
 
-    #if should_run(f"Step 1.2: transferring {baac.name}"):
-    film.transfer_precursor_batch(plate_96, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index, dest_index=FILL_INDEX)
-    protocol.comment(f"Transfer {baac.name} completed!")
-    #else:
-        #protocol.comment(f"Skipped {baac.name} transfer")
+    if should_run(f"Step 1.2: transferring {baac.name}", RUN_TRANSFER_BAAC):
+        film.transfer_precursor_batch(plate_96, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index, dest_index=FILL_INDEX)
+        protocol.comment(f"Transfer {baac.name} completed!")
+    else:
+        protocol.comment(f"Skipped {baac.name} transfer")
 
-    #if should_run(f"Step 1.3: transferring {mai.name}"):
-    film.transfer_precursor_batch(plate_96, vol_mai_list, reservoir, tiprack_300, source_well_index=mai.well_index, dest_index=FILL_INDEX)
-    protocol.comment(f"Transfer {mai.name} completed!")
-    #else:
-    #    protocol.comment(f"Skipped {mai.name} transfer")
+    if should_run(f"Step 1.3: transferring {mai.name}", RUN_TRANSFER_MAI):
+        film.transfer_precursor_batch(plate_96, vol_mai_list, reservoir, tiprack_300, source_well_index=mai.well_index, dest_index=FILL_INDEX)
+        protocol.comment(f"Transfer {mai.name} completed!")
+    else:
+        protocol.comment(f"Skipped {mai.name} transfer")
 
-    #if should_run("Step 2: mixing"):
-    film.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
-    protocol.comment("Mixing completed!")
-    #else:
-    #protocol.comment("Skipped mixing")
+    if should_run("Step 2: mixing", RUN_MIXING):
+        film.mix_wells_column(plate_96, mix_cycles_list, tiprack_300, mix_volume=50, dest_index=FILL_INDEX)
+        protocol.comment("Mixing completed!")
+    else:
+       protocol.comment("Skipped mixing")
 
-    #if should_run("Step 3: drop casting"):
-    film.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
-    protocol.comment("Drop casting completed!")
-    #else:
-    #    protocol.comment("Skipped drop casting")
+    if should_run("Step 3: drop casting", RUN_DROP_CASTING):
+        film.drop_cast_multi(plate_96, plate_film, tiprack_20, volume=5)
+        protocol.comment("Drop casting completed!")
+    else:
+        protocol.comment("Skipped drop casting")
 
     protocol.comment("=== Protocol Complete ===")
 
