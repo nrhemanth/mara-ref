@@ -12,6 +12,7 @@ dependencies = [
     "fastapi ~= 0.116",
     "uvicorn[standard] ~= 0.32",
     "python-multipart ~= 0.0.20",
+    "temporalio ~= 1.30",
 ]
 
 [build-system]
@@ -31,3 +32,4 @@ dev = [
 
 [project.scripts]
 mara-mock-robot = "mara.mock_robot:main"
+mara-temporal-worker = "mara.temporal.worker:main"

@@ -33,9 +33,7 @@ not reported by the robot.
 
 from __future__ import annotations
 
-import csv
 import os
-import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -43,32 +41,11 @@ from pathlib import Path
 
 from mara.preflight import confirm_deck_state
 from mara.runtime import CapyClient, TERMINAL_STATUSES
+from mara.timers import TIMER_START_RE, heater_setpoint, parse_timestamp, read_sample_data
 
 from hardware.hp_rct5 import IkaRct5
 
 HERE = Path(__file__).resolve().parent
-
-TIMER_START_RE = re.compile(r"TIMER_START sample=(\S+) anneal_min=([\d.]+)")
-
-
-def read_sample_data(csv_path: Path) -> list[dict]:
-    """Read sample_id/temperature/anneal_min rows from a CSV."""
-    with csv_path.open(newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    if not rows:
-        raise ValueError(f"{csv_path} has no data rows")
-    for col in ("sample_id", "temperature", "anneal_min"):
-        if col not in rows[0]:
-            raise ValueError(f"{csv_path} is missing required column '{col}'")
-    return rows
-
-
-def heater_setpoint(rows: list[dict]) -> float:
-    """All samples share one physical hotplate, so every row's temperature must agree."""
-    temps = {float(r["temperature"]) for r in rows}
-    if len(temps) > 1:
-        raise ValueError(f"samples.csv has inconsistent temperatures for one hotplate: {sorted(temps)}")
-    return temps.pop()
 
 
 def start_heater(port: str, celsius: float) -> None:
@@ -76,11 +53,6 @@ def start_heater(port: str, celsius: float) -> None:
         print(f"IKA heater on {port}: name={heater.get_name()!r}, setting {celsius:.1f} C and starting")
         heater.set_setpoint_temperature(celsius)
         heater.start_heating()
-
-
-def _parse_timestamp(value: str) -> datetime:
-    """Parse an ISO-8601 timestamp from the Opentrons HTTP API (or the mock)."""
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def track_pickup_timers(
@@ -121,7 +93,7 @@ def track_pickup_timers(
                 continue
 
             completed_at = getattr(cmd, "completedAt", None)
-            fired_at = _parse_timestamp(completed_at) if completed_at else datetime.now(timezone.utc)
+            fired_at = parse_timestamp(completed_at) if completed_at else datetime.now(timezone.utc)
             fire_time = fired_at + timedelta(minutes=anneal_min)
             ready_at[sample_id] = fire_time
             print(
