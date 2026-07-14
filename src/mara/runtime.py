@@ -250,6 +250,19 @@ class CapyClient:
         r = self._request("POST", "/runs", json=body)
         return Envelope[Run].model_validate(r.json()).data
 
+    def list_runs(self) -> ListEnvelope[Run]:
+        r = self._request("GET", "/runs")
+        return ListEnvelope[Run].model_validate(r.json())
+
+    def get_current_run(self) -> Run | None:
+        """The robot only allows one active run at a time; this is the one
+        that blocks create_run() with a 409 RunAlreadyActive until it's
+        stopped. Returns None if nothing is marked current."""
+        for run in self.list_runs().data:
+            if run.current:
+                return run
+        return None
+
     def get_run(self, run_id: str) -> Run:
         r = self._request("GET", f"/runs/{run_id}")
         return Envelope[Run].model_validate(r.json()).data

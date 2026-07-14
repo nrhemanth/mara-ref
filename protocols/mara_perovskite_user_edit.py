@@ -101,30 +101,49 @@ requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
 FILL_MODE = "column"
 
-SAMPLE_DATA = json.loads("""
-[
-    {"sample_id": 1, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 2, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 3, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 4, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 5, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 6, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 7, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1},
-    {"sample_id": 8, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1},
-    {"sample_id": 9, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 10, "vol_PbI2": 100, "vol_BAAc": 50, "vol_MAI": 50, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 11, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 12, "vol_PbI2": 80, "vol_BAAc": 70, "vol_MAI": 70, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 13, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 14, "vol_PbI2": 60, "vol_BAAc": 90, "vol_MAI": 90, "temperature": 25, "anneal_min": 1},
-    {"sample_id": 15, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1},
-    {"sample_id": 16, "vol_PbI2": 40, "vol_BAAc": 110,"vol_MAI": 110,  "temperature": 25, "anneal_min": 1}
-]
-""")
+# Batch data embedded verbatim from input/0713_batch_1.csv -- kept inline (rather
+# than read from that path at run-time) because protocol files execute on the
+# OT-2's onboard server, which has no access back to this repo's filesystem.
+BATCH_CSV = """sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_stock_volume_uL,BAAc_stock_volume_uL,R_PbI2,R_MAI,R_BAAc
+1,60,5,60,120,120,1,2,2
+2,60,5,60,120,120,1,2,2
+3,60,5,86,128,86,1,1.5,1
+4,60,5,86,128,86,1,1.5,1
+5,60,5,81,134,85,1,1.65,1.05
+6,60,5,81,134,85,1,1.65,1.05
+7,60,5,100,133,67,1,1.325,0.675
+8,60,5,100,133,67,1,1.325,0.675
+9,60,5,109,136,55,1,1.25,0.5
+10,60,5,109,136,55,1,1.25,0.5
+11,60,10,56,104,140,1,1.85,2.5
+12,60,10,56,104,140,1,1.85,2.5
+13,60,30,60,120,120,1,2,2
+14,60,30,60,120,120,1,2,2
+15,60,30,86,128,86,1,1.5,1
+16,60,30,86,128,86,1,1.5,1
+"""
+
+def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
+    """Parse a samples CSV (sample_id, Temperature_C, Anneal_Time_min,
+    PbI2/MAI/BAAc_stock_volume_uL, R_* ratio columns) into SAMPLE_DATA's shape."""
+    reader = csv.DictReader(StringIO(csv_text))
+    return [
+        {
+            "sample_id": int(row["sample_id"]),
+            "vol_PbI2": float(row["PbI2_stock_volume_uL"]),
+            "vol_BAAc": float(row["BAAc_stock_volume_uL"]),
+            "vol_MAI": float(row["MAI_stock_volume_uL"]),
+            "temperature": float(row["Temperature_C"]),
+            "anneal_min": float(row["Anneal_Time_min"]),
+        }
+        for row in reader
+    ]
+
+SAMPLE_DATA = _load_sample_data_from_csv(BATCH_CSV)
 
 PRECURSORS = json.loads("""{
     "PbI2": {"name": "PbI2", "well_index": 0, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "BAAc": {"name": "BAAc", "well_index": 1, "volume": 9500, "concentration": 0.5, "solvent": "DMF:DMSO"},
+    "BAAc": {"name": "BAAc", "well_index": 1, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
     "MAI":  {"name": "MAI",  "well_index": 2, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
 """)
@@ -452,7 +471,8 @@ def run(protocol):
 
     plate_film, film_wells = set_film_plate_16(protocol, "6")
 
-    reservoir = protocol.load_labware("opentrons_tough_4_reservoir_72ml", "8")
+    #reservoir = protocol.load_labware("opentrons_tough_4_reservoir_72ml", "8")
+    reservoir = protocol.load_labware("nest_12_reservoir_22ml", "8")
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------

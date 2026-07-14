@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -141,6 +142,17 @@ def main(protocol_file: Path, csv_file: Path) -> int:
         run = capy.create_run(protocol.id)
         capy.run_action(run.id, "play")
 
+        # Step 4: watch for TIMER_START markers and report pickup times as they
+        # come due -- started now, concurrently with the run, not after it
+        # finishes. track_pickup_timers polls until the run is terminal AND every
+        # sample's anneal time has elapsed, so running it sequentially after the
+        # status loop below would delay reporting short anneal_min samples (e.g.
+        # 5 min) that come due while the protocol is still busy with later steps.
+        timer_thread = threading.Thread(
+            target=track_pickup_timers, args=(capy, run.id, rows), daemon=True
+        )
+        timer_thread.start()
+
         for snap in capy.stream_status(run.id, poll_interval=0.5):
             print(f"  status: {snap.status}")
             if snap.status in TERMINAL_STATUSES:
@@ -149,8 +161,7 @@ def main(protocol_file: Path, csv_file: Path) -> int:
         if snap.status != "succeeded":
             return 2
 
-        # Step 4: watch for TIMER_START markers and report pickup times as they come due.
-        track_pickup_timers(capy, run.id, rows)
+        timer_thread.join()
         return 0
 
 
