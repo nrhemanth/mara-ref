@@ -40,8 +40,10 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import httpx
+
 from mara.preflight import confirm_deck_state
-from mara.runtime import CapyClient, TERMINAL_STATUSES
+from mara.runtime import CapyClient, CapyError, TERMINAL_STATUSES
 from mara.timers import TIMER_START_RE, heater_setpoint, parse_timestamp, read_sample_data
 
 from hardware.hp_rct5 import IkaRct5
@@ -71,9 +73,24 @@ def track_pickup_timers(
     seen: set[str] = set()
     ready_at: dict[str, datetime] = {}
 
-    cursor = 0
+    # Re-list the whole command set every poll instead of paging through it
+    # with an advancing cursor: the full list (queued/running/succeeded) is
+    # known up front from analysis and never grows, so a cursor that only
+    # moves forward would permanently skip any command that hadn't reached
+    # "succeeded" yet at the moment its page was fetched -- there's no later
+    # chance to revisit it. `seen` below dedups across polls.
     while True:
-        page = capy.list_commands(run_id, cursor=cursor)
+        try:
+            page = capy.list_commands(run_id, cursor=0, page_length=10_000)
+            run_finished = capy.get_run(run_id).status in TERMINAL_STATUSES
+        except (httpx.HTTPError, CapyError) as exc:
+            # A transient network blip talking to the robot shouldn't kill
+            # pickup tracking outright -- retry instead of letting the poll
+            # loop (and the thread it runs in) die silently mid-run.
+            print(f"warning: pickup-timer poll failed ({exc!r}), retrying in {poll_interval:g}s", file=sys.stderr)
+            time.sleep(poll_interval)
+            continue
+
         for cmd in page.data:
             if cmd.status != "succeeded":
                 continue  # only count a marker once it has actually executed
@@ -102,7 +119,6 @@ def track_pickup_timers(
                 f"({anneal_min:g} min) -- ready at {fire_time.astimezone():%H:%M:%S}",
                 file=out,
             )
-        cursor += len(page.data)
 
         # Report any samples whose pickup time has come.
         now = datetime.now(timezone.utc)
@@ -111,10 +127,29 @@ def track_pickup_timers(
             print(f"[{datetime.now():%H:%M:%S}] sample {sid} is ready for pickup!", file=out)
             del ready_at[sid]
 
-        run_finished = capy.get_run(run_id).status in TERMINAL_STATUSES
         if run_finished and len(seen) >= len(anneal_by_id) and not ready_at:
             return
         time.sleep(poll_interval)
+
+
+def start_tracker_thread(
+    capy: CapyClient, run_id: str, rows: list[dict]
+) -> tuple[threading.Thread, list[BaseException]]:
+    """Run track_pickup_timers in a background thread. Thread.join() alone
+    swallows exceptions raised inside a thread, which would make a crashed
+    tracker look identical to one that finished successfully -- errors
+    captures anything raised so the caller can re-raise it after joining."""
+    errors: list[BaseException] = []
+
+    def _target() -> None:
+        try:
+            track_pickup_timers(capy, run_id, rows)
+        except BaseException as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=_target, daemon=True)
+    thread.start()
+    return thread, errors
 
 
 def main(protocol_file: Path, csv_file: Path) -> int:
@@ -148,10 +183,7 @@ def main(protocol_file: Path, csv_file: Path) -> int:
         # sample's anneal time has elapsed, so running it sequentially after the
         # status loop below would delay reporting short anneal_min samples (e.g.
         # 5 min) that come due while the protocol is still busy with later steps.
-        timer_thread = threading.Thread(
-            target=track_pickup_timers, args=(capy, run.id, rows), daemon=True
-        )
-        timer_thread.start()
+        timer_thread, timer_errors = start_tracker_thread(capy, run.id, rows)
 
         for snap in capy.stream_status(run.id, poll_interval=0.5):
             print(f"  status: {snap.status}")
@@ -162,6 +194,8 @@ def main(protocol_file: Path, csv_file: Path) -> int:
             return 2
 
         timer_thread.join()
+        if timer_errors:
+            raise timer_errors[0]
         return 0
 
 

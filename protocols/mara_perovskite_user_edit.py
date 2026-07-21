@@ -85,10 +85,10 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = False #True
-RUN_TRANSFER_BAAC = False #True
+RUN_TRANSFER_PBI2 = False
+RUN_TRANSFER_BAAC = False
 RUN_TRANSFER_MAI = False #True
-RUN_MIXING = False #True 
+RUN_MIXING = False 
 RUN_DROP_CASTING = True
 
 # Set True only when running locally via opentrons_execute/opentrons_simulate
@@ -123,6 +123,15 @@ BATCH_CSV = """sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_
 16,60,30,86,128,86,1,1.5,1
 """
 
+# change well index to change the well in the precusor reservoir. 
+# default is 0,1,2
+PRECURSORS = json.loads("""{
+    "PbI2": {"name": "PbI2", "well_index": 3, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "BAAc": {"name": "BAAc", "well_index": 4, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "MAI":  {"name": "MAI",  "well_index": 5, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
+}
+""")
+
 def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
     """Parse a samples CSV (sample_id, Temperature_C, Anneal_Time_min,
     PbI2/MAI/BAAc_stock_volume_uL, R_* ratio columns) into SAMPLE_DATA's shape."""
@@ -140,13 +149,6 @@ def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
     ]
 
 SAMPLE_DATA = _load_sample_data_from_csv(BATCH_CSV)
-
-PRECURSORS = json.loads("""{
-    "PbI2": {"name": "PbI2", "well_index": 0, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "BAAc": {"name": "BAAc", "well_index": 1, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "MAI":  {"name": "MAI",  "well_index": 2, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
-}
-""")
 
 @dataclass
 class SampleParameters:
@@ -290,14 +292,14 @@ class Quasi2DProtocol:
 
         self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
 
-        source = source_reservoir.wells()[source_well_index]
+        source = source_reservoir.wells()[source_well_index].bottom(z=2)
 
         self.pip300.pick_up_tip()
         for i in range(0, len(volumes), n):
             vol = volumes[i]
             if vol > 0:
                 self.pip300.aspirate(vol, source)
-                self.pip300.dispense(vol, dest_wells[i + n - 1])
+                self.pip300.dispense(vol, dest_wells[i + n - 1].top(z=-5))
         self.pip300.drop_tip()
 
     def mix_wells_column(
@@ -305,7 +307,7 @@ class Quasi2DProtocol:
         dest_plate,
         cycles: int,
         tiprack,
-        mix_volume: float = 100,
+        mix_volume: float = 150,
         dest_index: int = 0,
     ) -> None:
         """Pick up a full column of tips and mix all 8 wells simultaneously,
@@ -324,7 +326,7 @@ class Quasi2DProtocol:
         source_wells: list,
         film_wells: Dict[int, Any],
         tiprack,
-        volume: float = 5,
+        volume: float = 10,
         hover_seconds: float = 3,
         sample_ids: list = None,
         anneal_mins: list = None,

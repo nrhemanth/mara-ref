@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import os
 import sys
-import threading
 from pathlib import Path
 
 from mara.preflight import confirm_deck_state
 from mara.runtime import CapyClient, TERMINAL_STATUSES
 from mara.timers import read_sample_data
 
-from preruns.preflight_films import track_pickup_timers
+from preruns.preflight_films import start_tracker_thread
 
 HERE = Path(__file__).resolve().parent
 
@@ -49,12 +48,9 @@ def main(protocol_file: Path, csv_file: Path | None)->int:
         # anneal time has elapsed, so calling it only after the status loop
         # below would delay reporting short anneal_min samples (e.g. 5 min)
         # that come due while the protocol is still busy with later steps.
-        timer_thread = None
+        timer_thread = timer_errors = None
         if rows:
-            timer_thread = threading.Thread(
-                target=track_pickup_timers, args=(capy, run.id, rows), daemon=True
-            )
-            timer_thread.start()
+            timer_thread, timer_errors = start_tracker_thread(capy, run.id, rows)
 
         for snap in capy.stream_status(run.id, poll_interval=0.5):
             print(f"  status: {snap.status}")
@@ -66,6 +62,8 @@ def main(protocol_file: Path, csv_file: Path | None)->int:
 
         if timer_thread:
             timer_thread.join()
+            if timer_errors:
+                raise timer_errors[0]
         return 0
 
 
