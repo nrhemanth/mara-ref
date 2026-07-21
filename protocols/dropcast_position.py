@@ -24,8 +24,12 @@ GRID_PITCH = (115.0 - 22.0) / 3  # mm between adjacent spots -- 4x 22mm films sp
 GRID_X_OFFSET = None   # mm from anchor's A1 in X; None = center on GRID_PITCH
 GRID_Y_OFFSET = None  # mm from anchor's A1 in Y; None = center on GRID_PITCH
 GRID_Z_OFFSET = -7.0   # mm added to the heater-top Z (83 mm, set below)
-HOVER_HEIGHT = 1.0     # mm above each spot to hover at for a visual check
+HOVER_HEIGHT = 3.0     # mm above each spot to hover at for a visual check
 POS_XY_CHECK = False #True
+RUN_Z_JOG = False      # Set True to run the Z-jog sweep instead of the full grid check
+RUN_CALIBRATION = True        # Set True to run heater calibration instead of Z-jog / grid check
+CALIBRATION_HOVER_HEIGHT = HOVER_HEIGHT  # mm above each spot during calibration
+
 
 def set_film_plate_grid(
     protocol,
@@ -69,7 +73,7 @@ def set_film_plate_grid(
 # of paper (or a spare glass slide) at the spot, and pause at each step to
 # check whether the tip grips/drags it yet.
 # ---------------------------------------------------------------------------
-RUN_Z_JOG = True    # Set True to run the Z-jog sweep instead of the full grid check
+
 Z_JOG_SPOT = 1       # which film_wells key to jog at (pick a spot you can easily see/reach)
 Z_JOG_START = -3.0   # mm -- first (highest/safest) z offset to try
 Z_JOG_STOP = -12.0   # mm -- last (lowest) z offset to try
@@ -108,6 +112,58 @@ def jog_z_at_spot(
             f"Check the tip-to-glass gap, then resume to step further down."
         )
         z += z_step
+
+    pip20.drop_tip()
+
+
+# ---------------------------------------------------------------------------
+# Heater alignment calibration: hover at the first grid spot so the heater can
+# be physically shifted underneath the tip, then hover over the other three
+# grid corners as a check -- if spot 1 was aligned and the grid pitch/rotation
+# match the physical plate, all four corners should line up too.
+# ---------------------------------------------------------------------------
+
+
+def calibrate_heater_position(
+    protocol,
+    pip20,
+    film_wells: Dict[int, Any],
+    hover_height: float = CALIBRATION_HOVER_HEIGHT,
+) -> None:
+    """Hover at spot 1 and pause so the heater can be shifted underneath the
+    tip until it lines up, then hover over the other three grid corners in
+    turn to check that the whole grid is aligned.
+    """
+    pip20.pick_up_tip()
+
+    keys = sorted(film_wells.keys())
+    n_cols = GRID_COLS
+    n_rows = GRID_ROWS
+    corners = {
+        "top-left (spot 1)": keys[0],
+        "top-right": n_cols,
+        "bottom-left": (n_rows - 1) * n_cols + 1,
+        "bottom-right": n_rows * n_cols,
+    }
+
+    # Step 1: hover at spot 1 and adjust the heater underneath the tip.
+    anchor, (ox, oy, oz) = film_wells[keys[0]]
+    pip20.move_to(anchor.top(z=hover_height + oz).move(Point(ox, oy, 0)))
+    protocol.pause(
+        "Calibration: hovering at spot 1 (top-left). Physically shift the "
+        "heater/plate underneath the tip until they line up, then resume."
+    )
+
+    # Step 2: check the remaining corners without moving the heater again.
+    for label, key in corners.items():
+        if key == keys[0]:
+            continue
+        anchor, (ox, oy, oz) = film_wells[key]
+        pip20.move_to(anchor.top(z=hover_height + oz).move(Point(ox, oy, 0)))
+        protocol.pause(
+            f"Calibration check: hovering at {label} (spot {key}). "
+            f"Confirm alignment, then resume."
+        )
 
     pip20.drop_tip()
 
@@ -163,6 +219,11 @@ def run(protocol):
 
     protocol.home()
 
+    if RUN_CALIBRATION:
+        protocol.comment("=== Heater calibration: spot 1 alignment + corner check ===")
+        calibrate_heater_position(protocol, pip20, film_wells)
+        protocol.comment("=== Calibration complete ===")
+        return
     if RUN_Z_JOG:
         protocol.comment(f"=== Z-jog at spot {Z_JOG_SPOT}: {Z_JOG_START} to {Z_JOG_STOP} mm, step {Z_JOG_STEP} ===")
         jog_z_at_spot(protocol, pip20, film_wells)

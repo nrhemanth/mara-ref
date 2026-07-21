@@ -88,7 +88,7 @@ TEST_FILM_PLATE_POSITIONS = False
 RUN_TRANSFER_PBI2 = False
 RUN_TRANSFER_BAAC = False
 RUN_TRANSFER_MAI = False #True
-RUN_MIXING = False 
+RUN_MIXING = False
 RUN_DROP_CASTING = True
 
 # Set True only when running locally via opentrons_execute/opentrons_simulate
@@ -97,30 +97,31 @@ RUN_DROP_CASTING = True
 # an actual robot run) skips the prompt entirely and just uses the presets.
 INTERACTIVE_CONFIRM = False
 
+# Opentrons API version requirements
 requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
-FILL_MODE = "column"
+
 
 # Batch data embedded verbatim from input/0713_batch_1.csv -- kept inline (rather
 # than read from that path at run-time) because protocol files execute on the
 # OT-2's onboard server, which has no access back to this repo's filesystem.
 BATCH_CSV = """sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_stock_volume_uL,BAAc_stock_volume_uL,R_PbI2,R_MAI,R_BAAc
-1,60,5,60,120,120,1,2,2
-2,60,5,60,120,120,1,2,2
-3,60,5,86,128,86,1,1.5,1
-4,60,5,86,128,86,1,1.5,1
-5,60,5,81,134,85,1,1.65,1.05
-6,60,5,81,134,85,1,1.65,1.05
-7,60,5,100,133,67,1,1.325,0.675
-8,60,5,100,133,67,1,1.325,0.675
-9,60,5,109,136,55,1,1.25,0.5
-10,60,5,109,136,55,1,1.25,0.5
-11,60,10,56,104,140,1,1.85,2.5
-12,60,10,56,104,140,1,1.85,2.5
-13,60,30,60,120,120,1,2,2
-14,60,30,60,120,120,1,2,2
-15,60,30,86,128,86,1,1.5,1
-16,60,30,86,128,86,1,1.5,1
+1,60,30,100,133,67,1,1.325,0.675
+2,60,30,100,133,67,1,1.325,0.675
+3,60,30,109,136,55,1,1.25,0.5
+4,60,30,109,136,55,1,1.25,0.5
+5,60,60,60,120,120,1,2,2
+6,60,60,60,120,120,1,2,2
+7,60,60,86,128,86,1,1.5,1
+8,60,60,86,128,86,1,1.5,1
+9,60,60,100,133,67,1,1.325,0.675
+10,60,60,100,133,67,1,1.325,0.675
+11,60,60,109,136,55,1,1.25,0.5
+12,60,60,109,136,55,1,1.25,0.5
+13,70,25,76,120,104,1,1.58,1.38
+14,70,25,76,120,104,1,1.58,1.38
+15,95,5,111,131,58,1,1.18,0.52
+16,95,5,111,131,58,1,1.18,0.52
 """
 
 # change well index to change the well in the precusor reservoir. 
@@ -131,6 +132,9 @@ PRECURSORS = json.loads("""{
     "MAI":  {"name": "MAI",  "well_index": 5, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
 """)
+
+# Well plate starting column
+START_INDEX = 0  # 0-indexed plate column to start filling from (e.g. 2 = column 3)
 
 def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
     """Parse a samples CSV (sample_id, Temperature_C, Anneal_Time_min,
@@ -176,7 +180,7 @@ def get_precursor(name: str) -> Precursor:
     return Precursor(**PRECURSORS[name])
 
 #--- Functions for sample parameter validation and conversion ---#
-def validate_sample_parameters(samples: List[SampleParameters], fill_mode: str = "row") -> Tuple[bool, str]:
+def validate_sample_parameters(samples: List[SampleParameters]) -> Tuple[bool, str]:
     """Validate sample parameters."""
     if not samples:
         return False, "No samples provided"
@@ -202,9 +206,20 @@ def validate_sample_parameters(samples: List[SampleParameters], fill_mode: str =
 
     return True, "All samples valid"
 
-def samples_to_volume_lists(samples: List[SampleParameters], fill_mode: str = "row", index: int = 0) -> Tuple[List[float], List[float], List[float]]:
-    """Convert one column/row's worth of sample parameters to volume lists."""
-    n = 8 if fill_mode == "column" else 12
+
+def validate_start_index(n_chunks: int, start_index: int = 0) -> Tuple[bool, str]:
+    """Validate that start_index + n_chunks fits within plate_96's 12 columns."""
+    max_slots = 12
+    if start_index + n_chunks > max_slots:
+        return False, (
+            f"START_INDEX={start_index} + n_chunks={n_chunks} exceeds the "
+            f"{max_slots} columns on plate_96"
+        )
+    return True, "start_index valid"
+
+def samples_to_volume_lists(samples: List[SampleParameters], index: int = 0) -> Tuple[List[float], List[float], List[float]]:
+    """Convert one plate column's worth of sample parameters to volume lists."""
+    n = 8
     chunk = samples[index * n:(index + 1) * n]
 
     vol_pbi2_list = [s.vol_PbI2 for s in chunk]
@@ -240,17 +255,14 @@ def should_run(step_name: str, preset: bool = True) -> bool:
 
 #--- Functions for sample parameter validation and conversion ---#
 class Quasi2DProtocol:
-    def __init__(self, pip300, pip20, fill_mode: str = "row"):
+    def __init__(self, pip300, pip20):
         self.pip300 = pip300
         self.pip20 = pip20
-        self.fill_mode = fill_mode
-        self.n_wells = 8 if fill_mode == "column" else 12
+        self.n_wells = 8
 
     def _get_wells(self, plate, index: int = 0) -> list:
-        """Return the target wells for the current fill mode."""
-        if self.fill_mode == "column":
-            return plate.columns()[index]
-        return plate.rows()[index]
+        """Return the target wells (one plate column) at the given index."""
+        return plate.columns()[index]
     
     def _get_tips_config(self, n, tiprack):
         """Return tip pickup configuration based on number of tips.
@@ -463,7 +475,7 @@ def run(protocol):
     pip20 = protocol.load_instrument('p20_multi_gen2', mount='right', tip_racks=[tiprack_20])
     pip300 = protocol.load_instrument('p300_multi_gen2', mount='left', tip_racks=[tiprack_300])
 
-    film = Quasi2DProtocol(pip300, pip20, fill_mode=FILL_MODE) # set class for quasi 2D protocol
+    film = Quasi2DProtocol(pip300, pip20) # set class for quasi 2D protocol
 
     # -----------------------
     # Plates and Reservoirs — slot 5: plate_96, slot 6: reservoir, slot 7: film_plate
@@ -487,20 +499,22 @@ def run(protocol):
         film.test_film_plate_positions(protocol, plate_film, film_wells, tiprack_20)
         return
 
-    protocol.comment(f"=== Loading Sample Parameters (mode: {FILL_MODE}) ===")
+    protocol.comment("=== Loading Sample Parameters ===")
     samples = [SampleParameters(**s) for s in SAMPLE_DATA]
-    is_valid, msg = validate_sample_parameters(samples, fill_mode=FILL_MODE)
+    is_valid, msg = validate_sample_parameters(samples)
     if not is_valid:
         raise ValueError(msg)
     protocol.comment(f"Loaded {len(samples)} samples from JSON")
 
-    # Each chunk is one column (8 samples) or row (12 samples) of plate_96 --
-    # loop over every chunk so all samples get filled, not just the first one.
-    n_per_chunk = 8 if FILL_MODE == "column" else 12
+    # Each chunk is one column (8 samples) of plate_96 -- loop over every
+    # chunk so all samples get filled, not just the first one.
+    n_per_chunk = 8
     n_chunks = -(-len(samples) // n_per_chunk)  # ceiling division
 
-    protocol.comment("=== Starting film Protocol ===")
-
+    is_valid, msg = validate_start_index(n_chunks, start_index=START_INDEX)
+    if not is_valid:
+        raise ValueError(msg)
+    
     pbi2 = get_precursor("PbI2")
     baac = get_precursor("BAAc")
     mai = get_precursor("MAI")
@@ -513,13 +527,15 @@ def run(protocol):
     vol_pbi2_list: List[float] = []
     vol_baac_list: List[float] = []
     vol_mai_list: List[float] = []
-    for fill_index in range(n_chunks):
+    for i in range(n_chunks):
+        fill_index = START_INDEX + i  # destination column on plate_96
         dest_wells_all += film._get_wells(plate_96, fill_index)
-        p, b, m = samples_to_volume_lists(samples, fill_mode=FILL_MODE, index=fill_index)
+        p, b, m = samples_to_volume_lists(samples, index=i)  # source chunk, still 0-based
         vol_pbi2_list += p
         vol_baac_list += b
         vol_mai_list += m
 
+    protocol.comment("=== Starting film Protocol ===")
     if should_run(f"Step 1.1: transferring {pbi2.name}", RUN_TRANSFER_PBI2):
         film.transfer_precursor_batch(dest_wells_all, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index)
         protocol.comment(f"Transfer {pbi2.name} completed!")
@@ -542,14 +558,16 @@ def run(protocol):
     # fixed to one plate column at a time -- it can't span two columns with
     # the same tips, so this still loops (and re-picks tips) per chunk.
     if should_run("Step 2: mixing", RUN_MIXING):
-        for fill_index in range(n_chunks):
-            film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=fill_index)
+        for i in range(n_chunks):
+            film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=START_INDEX + i)
         protocol.comment("Mixing completed!")
     else:
         protocol.comment("Skipped mixing")
 
     if should_run("Step 3: drop casting", RUN_DROP_CASTING):
-        source_wells = plate_96.columns()[0] + plate_96.columns()[1]  # 16 wells = sample_id 1-16
+        source_wells = []
+        for i in range(n_chunks):
+            source_wells += film._get_wells(plate_96, START_INDEX + i)
         sample_ids = [s.sample_id for s in samples]
         anneal_mins = [s.anneal_min for s in samples]
         film.drop_cast_single(protocol, source_wells, film_wells, tiprack_20, volume=DROP_VOL,
