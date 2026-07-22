@@ -30,6 +30,12 @@ class OceanHDX:
             raise RuntimeError("No Ocean HDX device found over USB.")
 
         self._device = self._api.open_device(device_ids[0])
+        # get_dark_corrected_spectrum2() does its own dark correction against
+        # the stored background - the device's built-in ("legacy") electric
+        # dark/nonlinearity correction must be off or the SDK raises
+        # ERROR_DARK_NONLINEARITY_CORRECTION_CONFLICT.
+        self._device.set_electric_dark_correction_usage(False)
+        self._device.set_nonlinearity_correction_usage(False)
         self._has_background = False
         self.set_integration_time(integration_time_us)
 

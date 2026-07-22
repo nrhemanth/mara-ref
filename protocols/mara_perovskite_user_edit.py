@@ -59,16 +59,12 @@ CONDITIONS_URL = "http://192.168.0.140:8000/conditions.csv"
 # source well A1 → BAAc, B1 → MAI, C1 → PbI2
 SOLUTION_COLUMNS = ["BAAc_vol", "MAI_vol", "PbI2_vol"]
 
-# Tip to start from for the mixing step.
-# Change this if the run is resuming partway through a tip rack.
-MIX_TIP_START = "A1"
-
 # Drop-casting volumes (µL)
 ASPIRATE_VOL = 5    # how much to pull up from the 96-well plate
 DROP_VOL     = 5  # how much to deposit on the substrate
 
 # Number of mix strokes applied to each column during Step 2 mixing.
-MIX_CYCLES = 10
+MIX_CYCLES = 20
 
 # Film-plate drop-cast grid, tuned via dropcast_position.py's position-check script.
 GRID_COLS = 4          # spots across (X) per row
@@ -77,7 +73,7 @@ GRID_PITCH = (115.0 - 22.0) / 3  # mm between adjacent spots -- 4x 22mm films sp
 GRID_X_OFFSET = None   # mm from anchor's A1 in X; None = center on GRID_PITCH
 GRID_Y_OFFSET = None   # mm from anchor's A1 in Y; None = center on GRID_PITCH
 GRID_Z_OFFSET = -11.5   # mm added to the heater-top Z (80 mm, set in set_film_plate_16) Set at -13.0 when glass + holder
-HOVER_HEIGHT = 1.0     # mm above each spot to hover at for a visual check
+HOVER_HEIGHT = 1.5     # mm above each spot to hover at for a visual check
 
  # Set True to jog the p20 (single tip) through all 16 film-plate spots, pausing at each one, instead of running the full protocol.
 TEST_FILM_PLATE_POSITIONS = False
@@ -91,50 +87,38 @@ RUN_TRANSFER_MAI = False #True
 RUN_MIXING = False
 RUN_DROP_CASTING = True
 
-# Set True only when running locally via opentrons_execute/opentrons_simulate
-# with a terminal attached. Adds a y/n prompt on top of the presets above so
-# you can override a step on the fly; leaving it False (the safe default for
-# an actual robot run) skips the prompt entirely and just uses the presets.
-INTERACTIVE_CONFIRM = False
-
-# Opentrons API version requirements
-requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
-
-
+# Well plate starting column
+START_INDEX = 2  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
 
 # Batch data embedded verbatim from input/0713_batch_1.csv -- kept inline (rather
 # than read from that path at run-time) because protocol files execute on the
 # OT-2's onboard server, which has no access back to this repo's filesystem.
 BATCH_CSV = """sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_stock_volume_uL,BAAc_stock_volume_uL,R_PbI2,R_MAI,R_BAAc
-1,60,30,100,133,67,1,1.325,0.675
-2,60,30,100,133,67,1,1.325,0.675
-3,60,30,109,136,55,1,1.25,0.5
-4,60,30,109,136,55,1,1.25,0.5
-5,60,60,60,120,120,1,2,2
-6,60,60,60,120,120,1,2,2
-7,60,60,86,128,86,1,1.5,1
-8,60,60,86,128,86,1,1.5,1
-9,60,60,100,133,67,1,1.325,0.675
-10,60,60,100,133,67,1,1.325,0.675
-11,60,60,109,136,55,1,1.25,0.5
-12,60,60,109,136,55,1,1.25,0.5
-13,70,25,76,120,104,1,1.58,1.38
-14,70,25,76,120,104,1,1.58,1.38
-15,95,5,111,131,58,1,1.18,0.52
-16,95,5,111,131,58,1,1.18,0.52
+1,60,10,56,104,140,1,1.85,2.5
+2,60,10,56,104,140,1,1.85,2.5
+3,60,5,60,120,120,1,2,2
+4,60,5,60,120,120,1,2,2
+5,60,5,86,128,86,1,1.5,1
+6,60,5,86,128,86,1,1.5,1
+7,60,5,81,134,85,1,1.65,1.05
+8,60,5,81,134,85,1,1.65,1.05
+9,60,5,100,133,67,1,1.325,0.675
+10,60,5,100,133,67,1,1.325,0.675
+11,60,5,109,136,55,1,1.25,0.5
+12,60,5,109,136,55,1,1.25,0.5
 """
 
 # change well index to change the well in the precusor reservoir. 
 # default is 0,1,2
 PRECURSORS = json.loads("""{
-    "PbI2": {"name": "PbI2", "well_index": 3, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "BAAc": {"name": "BAAc", "well_index": 4, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "MAI":  {"name": "MAI",  "well_index": 5, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
+    "PbI2": {"name": "PbI2", "well_index": 9, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "BAAc": {"name": "BAAc", "well_index": 10, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "MAI":  {"name": "MAI",  "well_index": 11, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
 """)
 
-# Well plate starting column
-START_INDEX = 0  # 0-indexed plate column to start filling from (e.g. 2 = column 3)
+# Opentrons API version requirements
+requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
 def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
     """Parse a samples CSV (sample_id, Temperature_C, Anneal_Time_min,
@@ -207,6 +191,14 @@ def validate_sample_parameters(samples: List[SampleParameters]) -> Tuple[bool, s
     return True, "All samples valid"
 
 
+def validate_batch_size(n: int) -> Tuple[bool, str]:
+    """Drop-casting (and the paired-well precursor transfers) require an even
+    batch size -- there's no fixed count like 16 otherwise."""
+    if n <= 0 or n % 2 != 0:
+        return False, f"Batch size must be a positive even number (dropcast in pairs), got {n}"
+    return True, "batch size valid"
+
+
 def validate_start_index(n_chunks: int, start_index: int = 0) -> Tuple[bool, str]:
     """Validate that start_index + n_chunks fits within plate_96's 12 columns."""
     max_slots = 12
@@ -231,27 +223,6 @@ def samples_to_volume_lists(samples: List[SampleParameters], index: int = 0) -> 
             lst.append(0)
 
     return vol_pbi2_list[:n], vol_baac_list[:n], vol_mai_list[:n]
-
-
-def should_run(step_name: str, preset: bool = True) -> bool:
-    """Decide whether to run a step.
-
-    `preset` is what actually controls behavior on the robot/App (set via the
-    RUN_* constants above) -- there's no terminal there for input() to read.
-
-    If INTERACTIVE_CONFIRM is True, this additionally prompts in the terminal
-    for a y/n override (only meaningful when running locally with a terminal
-    attached, e.g. via opentrons_simulate); pressing Enter with no answer
-    keeps the preset.
-    """
-    if not INTERACTIVE_CONFIRM:
-        return preset
-    default_label = "Y/n" if preset else "y/N"
-    answer = input(f"Run {step_name}? [{default_label}]: ").strip().lower()
-    if not answer:
-        return preset
-    return answer in ("y", "yes")
-
 
 #--- Functions for sample parameter validation and conversion ---#
 class Quasi2DProtocol:
@@ -304,7 +275,7 @@ class Quasi2DProtocol:
 
         self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
 
-        source = source_reservoir.wells()[source_well_index].bottom(z=2)
+        source = source_reservoir.wells()[source_well_index].bottom(z=-3) # aspirate from 3mm below the bottom of the reservoir well to avoid air aspiration
 
         self.pip300.pick_up_tip()
         for i in range(0, len(volumes), n):
@@ -312,6 +283,7 @@ class Quasi2DProtocol:
             if vol > 0:
                 self.pip300.aspirate(vol, source)
                 self.pip300.dispense(vol, dest_wells[i + n - 1].top(z=-5))
+                self.pip300.blow_out(dest_wells[i + n - 1].top(z=-5))
         self.pip300.drop_tip()
 
     def mix_wells_column(
@@ -357,9 +329,12 @@ class Quasi2DProtocol:
              visible remotely -- it shows up in this run's command list via
              the Opentrons HTTP API, which is how preruns/preflight_films.py
              computes each sample's pickup time from the instrument PC."""
-        keys = sorted(film_wells.keys())
-        if len(source_wells) != len(keys):
-            raise ValueError(f"source_wells must have {len(keys)} items to match the film plate, got {len(source_wells)}")
+        all_keys = sorted(film_wells.keys())
+        if len(source_wells) % 2 != 0:
+            raise ValueError(f"source_wells must be an even count (dropcast in pairs), got {len(source_wells)}")
+        if len(source_wells) > len(all_keys):
+            raise ValueError(f"source_wells has {len(source_wells)} items, exceeds the {len(all_keys)} spots on the film plate")
+        keys = all_keys[:len(source_wells)]
         if sample_ids is not None and len(sample_ids) != len(source_wells):
             raise ValueError(f"sample_ids must have {len(source_wells)} items, got {len(sample_ids)}")
         if anneal_mins is not None and len(anneal_mins) != len(source_wells):
@@ -458,7 +433,7 @@ def run(protocol):
     # Working Layout
     '''
     [ 10 empty   ]  [ 11 empty   ]  [ trash  ]
-    [  7 plate_96 ]  [  8 precursor_reservoir   ]  [  9 heater  ]
+    [  7 precursor_reservoir  ]  [  8 plate_96  ]  [  9 heater  ]
     [  4 empty    ]  [  5 empty   ]  [  6 film_plate on heater]
     [  1 tiprack_300 ]  [  2 tiprack_20  ]  [  3 heater ] ]
 
@@ -480,13 +455,13 @@ def run(protocol):
     # -----------------------
     # Plates and Reservoirs — slot 5: plate_96, slot 6: reservoir, slot 7: film_plate
     # -----------------------
-    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "7")
+    plate_96 = protocol.load_labware("opentrons_96_wellplate_200ul_pcr_full_skirt", "8")
     plate_96.set_offset(x=0, y=0, z=5)
 
     plate_film, film_wells = set_film_plate_16(protocol, "6")
 
     #reservoir = protocol.load_labware("opentrons_tough_4_reservoir_72ml", "8")
-    reservoir = protocol.load_labware("nest_12_reservoir_22ml", "8")
+    reservoir = protocol.load_labware("nest_12_reservoir_22ml", "7")
     reservoir.set_offset(x=0, y=0, z=5)
 
     # -----------------------
@@ -505,6 +480,10 @@ def run(protocol):
     if not is_valid:
         raise ValueError(msg)
     protocol.comment(f"Loaded {len(samples)} samples from JSON")
+
+    is_valid, msg = validate_batch_size(len(samples))
+    if not is_valid:
+        raise ValueError(msg)
 
     # Each chunk is one column (8 samples) of plate_96 -- loop over every
     # chunk so all samples get filled, not just the first one.
@@ -536,19 +515,19 @@ def run(protocol):
         vol_mai_list += m
 
     protocol.comment("=== Starting film Protocol ===")
-    if should_run(f"Step 1.1: transferring {pbi2.name}", RUN_TRANSFER_PBI2):
+    if RUN_TRANSFER_PBI2:
         film.transfer_precursor_batch(dest_wells_all, vol_pbi2_list, reservoir, tiprack_300, source_well_index=pbi2.well_index)
         protocol.comment(f"Transfer {pbi2.name} completed!")
     else:
         protocol.comment(f"Skipped {pbi2.name} transfer")
 
-    if should_run(f"Step 1.2: transferring {baac.name}", RUN_TRANSFER_BAAC):
+    if RUN_TRANSFER_BAAC:
         film.transfer_precursor_batch(dest_wells_all, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index)
         protocol.comment(f"Transfer {baac.name} completed!")
     else:
         protocol.comment(f"Skipped {baac.name} transfer")
 
-    if should_run(f"Step 1.3: transferring {mai.name}", RUN_TRANSFER_MAI):
+    if RUN_TRANSFER_MAI:
         film.transfer_precursor_batch(dest_wells_all, vol_mai_list, reservoir, tiprack_300, source_well_index=mai.well_index)
         protocol.comment(f"Transfer {mai.name} completed!")
     else:
@@ -557,17 +536,20 @@ def run(protocol):
     # Mixing uses a full 8-tip column pipette (style=ALL), which is physically
     # fixed to one plate column at a time -- it can't span two columns with
     # the same tips, so this still loops (and re-picks tips) per chunk.
-    if should_run("Step 2: mixing", RUN_MIXING):
+    if RUN_MIXING:
         for i in range(n_chunks):
             film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=START_INDEX + i)
         protocol.comment("Mixing completed!")
     else:
         protocol.comment("Skipped mixing")
 
-    if should_run("Step 3: drop casting", RUN_DROP_CASTING):
+    if RUN_DROP_CASTING:
         source_wells = []
         for i in range(n_chunks):
             source_wells += film._get_wells(plate_96, START_INDEX + i)
+        # Trim off the zero-padded tail wells (chunks are padded to full
+        # 8-well columns above) so drop-casting only touches real samples.
+        source_wells = source_wells[:len(samples)]
         sample_ids = [s.sample_id for s in samples]
         anneal_mins = [s.anneal_min for s in samples]
         film.drop_cast_single(protocol, source_wells, film_wells, tiprack_20, volume=DROP_VOL,
