@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 from hardware.kamome import Kamome
-from hardware.ocean_HDX import OceanHDX
+from hardware.ocean_HDX import OceanHDX, OceanHDXMetadata, format_oceanview_txt
 from kamome_sdk import PLATE_TYPES
 
 DEFAULT_PORT = "COM3"
@@ -59,6 +59,15 @@ def write_spectrum_csv(path: Path, wavelengths: list[float], intensities: list[f
         writer.writerows(zip(wavelengths, intensities))
 
 
+def write_spectrum_txt(
+    path: Path,
+    metadata: OceanHDXMetadata,
+    wavelengths: list[float],
+    intensities: list[float],
+) -> None:
+    path.write_text(format_oceanview_txt(path.name, metadata, wavelengths, intensities))
+
+
 def main(plate_type: str, start_well: str, end_well: str, out_dir: Path) -> int:
     kamome_port = os.environ.get("KAMOME_PORT", DEFAULT_PORT)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -69,6 +78,7 @@ def main(plate_type: str, start_well: str, end_well: str, out_dir: Path) -> int:
         input("Cap the probe / block excitation, then press Enter to capture background...")
         spec.capture_background()
         wavelengths = spec.get_wavelengths()
+        metadata = spec.get_metadata()
 
         with Kamome(kamome_port) as gantry:
             gantry.check_connection()
@@ -77,6 +87,7 @@ def main(plate_type: str, start_well: str, end_well: str, out_dir: Path) -> int:
                 gantry.move_to_well(plate_type, well)
                 intensities = spec.get_spectrum()
                 write_spectrum_csv(out_dir / f"{well}.csv", wavelengths, intensities)
+                write_spectrum_txt(out_dir / f"{well}.txt", metadata, wavelengths, intensities)
                 print(f"{well}: saved ({len(intensities)} points, peak={max(intensities):.1f})")
 
             gantry.home()

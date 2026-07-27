@@ -65,10 +65,18 @@ def track_pickup_timers(
     *,
     poll_interval: float = 2.0,
     out=sys.stdout,
+    ika_port: str | None = None,
+    heater_off_delay_min: float = 1.0,
 ) -> None:
     """Poll the run's commands for TIMER_START markers, then wait out and report
     each sample's pickup time as it comes due. Blocks until the run has finished
-    AND every sample's anneal time has elapsed."""
+    AND every sample's anneal time has elapsed.
+
+    If `ika_port` is given, once every sample has been reported ready for
+    pickup this also waits `heater_off_delay_min` more minutes and then turns
+    the hotplate off -- this is the one place that actually knows when the
+    last pickup happened, so it's simpler to have it own the shutdown too
+    rather than reconstruct that moment from the caller side."""
     anneal_by_id = {str(r["sample_id"]): float(r["anneal_min"]) for r in rows}
     seen: set[str] = set()
     ready_at: dict[str, datetime] = {}
@@ -128,12 +136,21 @@ def track_pickup_timers(
             del ready_at[sid]
 
         if run_finished and len(seen) >= len(anneal_by_id) and not ready_at:
-            return
+            break
         time.sleep(poll_interval)
+
+    if ika_port is not None:
+        time.sleep(heater_off_delay_min * 60)
+        with IkaRct5(ika_port) as heater:
+            heater.stop_heating()
+        print(
+            f"[{datetime.now():%H:%M:%S}] heater off ({heater_off_delay_min:g} min after last pickup)",
+            file=out,
+        )
 
 
 def start_tracker_thread(
-    capy: CapyClient, run_id: str, rows: list[dict]
+    capy: CapyClient, run_id: str, rows: list[dict], *, ika_port: str | None = None
 ) -> tuple[threading.Thread, list[BaseException]]:
     """Run track_pickup_timers in a background thread. Thread.join() alone
     swallows exceptions raised inside a thread, which would make a crashed
@@ -143,7 +160,7 @@ def start_tracker_thread(
 
     def _target() -> None:
         try:
-            track_pickup_timers(capy, run_id, rows)
+            track_pickup_timers(capy, run_id, rows, ika_port=ika_port)
         except BaseException as exc:
             errors.append(exc)
 
@@ -183,7 +200,7 @@ def main(protocol_file: Path, csv_file: Path) -> int:
         # sample's anneal time has elapsed, so running it sequentially after the
         # status loop below would delay reporting short anneal_min samples (e.g.
         # 5 min) that come due while the protocol is still busy with later steps.
-        timer_thread, timer_errors = start_tracker_thread(capy, run.id, rows)
+        timer_thread, timer_errors = start_tracker_thread(capy, run.id, rows, ika_port=ika_port)
 
         for snap in capy.stream_status(run.id, poll_interval=0.5):
             print(f"  status: {snap.status}")

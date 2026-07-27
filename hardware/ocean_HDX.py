@@ -16,9 +16,68 @@ Note: `find_usb_devices()` returns a device *count*, not a list of devices -
 device handles come from `get_device_ids()` + `open_device(id)`.
 """
 
+import getpass
+import time
+from dataclasses import dataclass
+
 from oceandirect.OceanDirectAPI import OceanDirectAPI
 
 DEFAULT_INTEGRATION_TIME_US = 100_000  # 100 ms
+
+
+@dataclass
+class OceanHDXMetadata:
+    """Snapshot of the device's acquisition settings, in the same terms
+    OceanView's own .txt export reports them - see format_oceanview_txt()."""
+
+    model: str
+    serial_number: str
+    trigger_mode: int
+    integration_time_us: int
+    scans_to_average: int
+    nonlinearity_correction_enabled: bool
+    boxcar_width: int
+    storing_dark_spectrum: bool
+    num_pixels: int
+
+
+def _format_scientific(value: float) -> str:
+    """Java/OceanView-style scientific notation - no leading zero in the
+    exponent (e.g. "5.000000E-1"), unlike Python's own "%E" ("5.000000E-01")."""
+    mantissa, _, exponent = f"{value:.6E}".partition("E")
+    sign, digits = exponent[0], exponent[1:].lstrip("0") or "0"
+    return f"{mantissa}E{sign}{digits}"
+
+
+def format_oceanview_txt(
+    filename: str,
+    metadata: OceanHDXMetadata,
+    wavelengths: list[float],
+    intensities: list[float],
+) -> str:
+    """Render a spectrum as text in OceanView's own export format (header
+    metadata block + ">>>>>Begin Spectral Data<<<<<" + wavelength,intensity
+    rows), so files saved by this codebase's acquisition scripts are
+    interchangeable with ones exported directly from OceanView."""
+    lines = [
+        f"Data from {filename} Node",
+        "",
+        f"Date: {time.strftime('%a %b %d %H:%M:%S %Z %Y')}",
+        f"User: {getpass.getuser()}",
+        f"Spectrometer: {metadata.serial_number}",
+        f"Trigger mode: {metadata.trigger_mode}",
+        f"Integration Time (sec): {_format_scientific(metadata.integration_time_us / 1_000_000)}",
+        f"Scans to average: {metadata.scans_to_average}",
+        f"Nonlinearity correction enabled: {str(metadata.nonlinearity_correction_enabled).lower()}",
+        f"Boxcar width: {metadata.boxcar_width}",
+        f"Storing dark spectrum: {str(metadata.storing_dark_spectrum).lower()}",
+        "XAxis mode: Wavelengths",
+        f"Number of Pixels in Spectrum: {metadata.num_pixels}",
+        ">>>>>Begin Spectral Data<<<<<",
+        "wavelength,intensity",
+    ]
+    lines.extend(f"{w},{i}" for w, i in zip(wavelengths, intensities))
+    return "\n".join(lines) + "\n"
 
 
 class OceanHDX:
@@ -76,6 +135,22 @@ class OceanHDX:
         if not self._has_background:
             raise RuntimeError("No background captured yet - call capture_background() first.")
         return self._device.get_dark_corrected_spectrum2()
+
+    def get_metadata(self) -> OceanHDXMetadata:
+        """Read the device's current acquisition settings - pass this to
+        format_oceanview_txt() alongside a spectrum to write it out in
+        OceanView's own .txt export format."""
+        return OceanHDXMetadata(
+            model=self._device.get_model(),
+            serial_number=self._device.get_serial_number(),
+            trigger_mode=self._device.get_trigger_mode(),
+            integration_time_us=self._device.get_integration_time(),
+            scans_to_average=self._device.get_scans_to_average(),
+            nonlinearity_correction_enabled=self._device.get_nonlinearity_correction_usage(),
+            boxcar_width=self._device.get_boxcar_width(),
+            storing_dark_spectrum=self._has_background,
+            num_pixels=self._device.get_spectrum_length(),
+        )
 
 
 if __name__ == "__main__":

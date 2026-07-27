@@ -208,3 +208,19 @@ acquisition), which is where that pattern stops scaling:
   current `print()`-to-stdout status reporting — visibility into which
   sample is heating, transferring, or being measured without tailing a
   terminal.
+
+
+# Example run of Kamome
+```
+ uv run python -c "                                                                                                                                     
+>> from hardware.kamome import Kamome                      
+>> PLATE_TYPE = 'Thinfilm_20'    
+>> wells = [f'{r}{c}' for r in 'ABCD' for c in range(1, 5)]
+>> with Kamome('COM3') as gantry:
+>>     gantry.check_connection()             
+>>     for w in wells:             
+>>         gantry.move_to_well(PLATE_TYPE, w)
+>>         print(f'Arrived at {w}')
+>>     gantry.home()
+>> "
+```

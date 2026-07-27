@@ -81,31 +81,35 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = False
-RUN_TRANSFER_BAAC = False
-RUN_TRANSFER_MAI = False #True
-RUN_MIXING = False
-RUN_DROP_CASTING = True
+RUN_TRANSFER_PBI2 = True
+RUN_TRANSFER_BAAC = True
+RUN_TRANSFER_MAI = True #True
+RUN_MIXING = True
+RUN_DROP_CASTING = False
 
 # Well plate starting column
-START_INDEX = 2  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
+START_INDEX = 4  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
 
 # Batch data embedded verbatim from input/0713_batch_1.csv -- kept inline (rather
 # than read from that path at run-time) because protocol files execute on the
 # OT-2's onboard server, which has no access back to this repo's filesystem.
 BATCH_CSV = """sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_stock_volume_uL,BAAc_stock_volume_uL,R_PbI2,R_MAI,R_BAAc
-1,60,10,56,104,140,1,1.85,2.5
-2,60,10,56,104,140,1,1.85,2.5
-3,60,5,60,120,120,1,2,2
-4,60,5,60,120,120,1,2,2
-5,60,5,86,128,86,1,1.5,1
-6,60,5,86,128,86,1,1.5,1
-7,60,5,81,134,85,1,1.65,1.05
-8,60,5,81,134,85,1,1.65,1.05
-9,60,5,100,133,67,1,1.325,0.675
-10,60,5,100,133,67,1,1.325,0.675
-11,60,5,109,136,55,1,1.25,0.5
-12,60,5,109,136,55,1,1.25,0.5
+1,70,60,52,141,107,1,2.7,2.05
+2,70,60,52,141,107,1,2.7,2.05
+3,70,60,62,83,155,1,1.35,2.5
+4,70,60,62,83,155,1,1.35,2.5
+5,70,50,67,98,135,1,1.45,2
+6,70,50,67,98,135,1,1.45,2
+7,70,50,95,10,195,1,0.1,2.05
+8,70,50,95,10,195,1,0.1,2.05
+9,70,45,83,71,146,1,0.85,1.75
+10,70,45,83,71,146,1,0.85,1.75
+11,70,25,44,137,119,1,3.1,2.7
+12,70,25,44,137,119,1,3.1,2.7
+13,70,25,60,156,84,1,2.6,1.4
+14,70,25,60,156,84,1,2.6,1.4
+15,70,10,143,43,114,1,0.3,0.8
+16,70,10,143,43,114,1,0.3,0.8
 """
 
 # change well index to change the well in the precusor reservoir. 
@@ -177,16 +181,16 @@ def validate_sample_parameters(samples: List[SampleParameters]) -> Tuple[bool, s
         sid = sample.sample_id
         anneal_min = sample.anneal_min
 
-        if vol_pbi2 < 0 or vol_pbi2 > 200:
-            return False, f"Sample {sid}: vol_PbI2 must be 0-200 µL, got {vol_pbi2}"
-        if vol_baac < 0 or vol_baac > 200:
-            return False, f"Sample {sid}: vol_BAAc must be 0-200 µL, got {vol_baac}"
-        if vol_mai < 0 or vol_mai > 200:
-            return False, f"Sample {sid}: vol_MAI must be 0-200 µL, got {vol_mai}"
-        if temp < 0 or temp > 100:
-            return False, f"Sample {sid}: temperature must be 0-100°C, got {temp}"
-        if anneal_min < 0 or anneal_min > 180:
-            return False, f"Sample {sid}: anneal_min must be 0-180 min, got {anneal_min}"
+        if vol_pbi2 < 0 or vol_pbi2 > 290:
+            return False, f"Sample {sid}: vol_PbI2 must be 0-290 µL, got {vol_pbi2}"
+        if vol_baac < 0 or vol_baac > 290:
+            return False, f"Sample {sid}: vol_BAAc must be 0-290 µL, got {vol_baac}"
+        if vol_mai < 0 or vol_mai > 290:
+            return False, f"Sample {sid}: vol_MAI must be 0-290 µL, got {vol_mai}"
+        if temp < 0 or temp > 150:
+            return False, f"Sample {sid}: temperature must be 0-150°C, got {temp}"
+        if anneal_min < 0 or anneal_min > 60:
+            return False, f"Sample {sid}: anneal_min must be 0-60 min, got {anneal_min}"
 
     return True, "All samples valid"
 
@@ -226,7 +230,8 @@ def samples_to_volume_lists(samples: List[SampleParameters], index: int = 0) -> 
 
 #--- Functions for sample parameter validation and conversion ---#
 class Quasi2DProtocol:
-    def __init__(self, pip300, pip20):
+    def __init__(self, protocol, pip300, pip20):
+        self.protocol = protocol
         self.pip300 = pip300
         self.pip20 = pip20
         self.n_wells = 8
@@ -265,6 +270,7 @@ class Quasi2DProtocol:
         tiprack,
         source_well_index: int = 0,
         n: int = 2,
+        air_gap_vol: float = 5,
     ) -> None:
         """Transfer to the last well of each n-well group across dest_wells,
         picking up tips once and reusing them for the whole batch -- pass the
@@ -275,15 +281,17 @@ class Quasi2DProtocol:
 
         self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
 
-        source = source_reservoir.wells()[source_well_index].bottom(z=-3) # aspirate from 3mm below the bottom of the reservoir well to avoid air aspiration
+        source = source_reservoir.wells()[source_well_index].bottom(z=-8) # aspirate from 8mm below the bottom of the reservoir well to avoid air aspiration
 
         self.pip300.pick_up_tip()
         for i in range(0, len(volumes), n):
             vol = volumes[i]
             if vol > 0:
                 self.pip300.aspirate(vol, source)
-                self.pip300.dispense(vol, dest_wells[i + n - 1].top(z=-5))
-                self.pip300.blow_out(dest_wells[i + n - 1].top(z=-5))
+                self.pip300.air_gap(air_gap_vol) # traps a pocket of air below the tip opening so residual liquid can't drip out between wells
+                self.protocol.delay(seconds = 1) # to prevent dripping
+                self.pip300.dispense(vol + air_gap_vol, dest_wells[i + n - 1].top(z=-3))
+                self.pip300.blow_out(dest_wells[i + n - 1].top(z=-5)) # to prevent dripping
         self.pip300.drop_tip()
 
     def mix_wells_column(
@@ -450,7 +458,7 @@ def run(protocol):
     pip20 = protocol.load_instrument('p20_multi_gen2', mount='right', tip_racks=[tiprack_20])
     pip300 = protocol.load_instrument('p300_multi_gen2', mount='left', tip_racks=[tiprack_300])
 
-    film = Quasi2DProtocol(pip300, pip20) # set class for quasi 2D protocol
+    film = Quasi2DProtocol(protocol, pip300, pip20) # set class for quasi 2D protocol
 
     # -----------------------
     # Plates and Reservoirs — slot 5: plate_96, slot 6: reservoir, slot 7: film_plate
