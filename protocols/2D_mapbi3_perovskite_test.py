@@ -55,10 +55,6 @@ def add_material(material_id, duration_min):
 # Start the server with: cd Mara_shared && python -m http.server 8000
 CONDITIONS_URL = "http://192.168.0.140:8000/conditions.csv"
 
-# Which columns in the CSV map to the three source solutions (in order):
-# source well A1 → BAAc, B1 → MAI, C1 → PbI2
-SOLUTION_COLUMNS = ["MAI_vol", "PbI2_vol"]
-
 # Drop-casting volumes (µL)
 ASPIRATE_VOL = 5    # how much to pull up from the 96-well plate
 DROP_VOL     = 5  # how much to deposit on the substrate
@@ -81,42 +77,45 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = False
-RUN_TRANSFER_MAI = False
-RUN_MIXING = False
+RUN_TRANSFER_PBI2 = True
+RUN_TRANSFER_MAI = True
+RUN_TRANSFER_BAAC = True
+RUN_MIXING = True
 RUN_DROP_CASTING = True
 
 # Well plate starting column
-START_INDEX = 2  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
+START_INDEX = 3  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
 
-# Two source wells (A1, A2), same MAPbI3 stoichiometry in both (1:1 PbI2:MAI,
-# no BAAc). Each is drawn from 8 times during drop-casting -- 8 films from A1,
-# 8 from A2, 16 total. anneal_min sweeps the same 4 durations (60/45/30/5 min)
-# twice per well; edit these if you want a different/wider sweep.
-BATCH_CSV = """sample_id,well,temperature,anneal_min,PbI2_vol_uL,MAI_vol_uL,BAAc_vol_uL,R_PbI2,R_MAI,R_BAAc
-1,B1,150,60,150,150,0,1.0,1.0,0
-2,B1,150,45,150,150,0,1.0,1.0,0
-3,B1,150,30,150,150,0,1.0,1.0,0
-4,B1,150,5,150,150,0,1.0,1.0,0
-5,B1,150,60,150,150,0,1.0,1.0,0
-6,B1,150,45,150,150,0,1.0,1.0,0
-7,B1,150,30,150,150,0,1.0,1.0,0
-8,B1,150,5,150,150,0,1.0,1.0,0
-9,B2,150,60,150,150,0,1.0,1.0,0
-10,B2,150,45,150,150,0,1.0,1.0,0
-11,B2,150,30,150,150,0,1.0,1.0,0
-12,B2,150,5,150,150,0,1.0,1.0,0
-13,B2,150,60,150,150,0,1.0,1.0,0
-14,B2,150,45,150,150,0,1.0,1.0,0
-15,B2,150,30,150,150,0,1.0,1.0,0
-16,B2,150,5,150,150,0,1.0,1.0,0
+# Two source wells (A4, B4), same quasi-2D MAPbI3 stoichiometry in both
+# (1:2:2 PbI2:MAI:BAAc, BAAc as the bulky spacer cation). Each is drawn from
+# 8 times during drop-casting -- 8 films from A4, 8 from B4, 16 total.
+# anneal_min sweeps the same 4 durations (5/20/40/60 min) twice per well;
+# edit these if you want a different/wider sweep.
+BATCH_CSV = """ID,film_ID,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio
+FOKYMT,1,A4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+GXOMUH,2,A4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+ADHTAJ,3,A4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+VUFXXM,4,A4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+SXFNHW,5,B4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+RULNGE,6,B4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+DFZKLP,7,B4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+DGVGYX,8,B4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+TFYYCU,9,A4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+GMETKF,10,A4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+MRZRAH,11,A4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+MZBDFP,12,A4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+TJYNKO,13,B4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+FYWWZJ,14,B4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+MOPCIX,15,B4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+NANXCA,16,B4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
 """
 
 # change well index to change the well in the precusor reservoir. 
 # default is 0,1,2
 PRECURSORS = json.loads("""{
     "PbI2": {"name": "PbI2", "well_index": 9, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "MAI":  {"name": "MAI",  "well_index": 10, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
+    "BAAc": {"name": "BAAc", "well_index": 10, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "MAI":  {"name": "MAI",  "well_index": 11, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
 """)
 
@@ -124,17 +123,19 @@ PRECURSORS = json.loads("""{
 requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
 def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
-    """Parse a samples CSV (sample_id, well, temperature, anneal_min, PbI2/MAI/BAAc_vol_uL columns) into SAMPLE_DATA's shape."""
+    """Parse BATCH_CSV (ID, film_ID, well, anneal_time, temperature,
+    PbI2_vol, MAI_vol, BAAc_vol, ...) into SAMPLE_DATA's shape."""
     reader = csv.DictReader(StringIO(csv_text))
     return [
         {
-            "sample_id": int(row["sample_id"]),
+            "sample_id": row["ID"],
+            "film_id": int(row["film_ID"]),
             "well": row["well"],
             "temperature": float(row["temperature"]),
-            "anneal_min": float(row["anneal_min"]),
-            "vol_PbI2": float(row["PbI2_vol_uL"]),
-            "vol_BAAc": float(row["BAAc_vol_uL"]),
-            "vol_MAI": float(row["MAI_vol_uL"]),
+            "anneal_min": float(row["anneal_time"]),
+            "vol_PbI2": float(row["PbI2_vol"]),
+            "vol_BAAc": float(row["BAAc_vol"]),
+            "vol_MAI": float(row["MAI_vol"]),
         }
         for row in reader
     ]
@@ -144,7 +145,8 @@ SAMPLE_DATA = _load_sample_data_from_csv(BATCH_CSV)
 @dataclass
 class SampleParameters:
     """Container for a single sample's parameters."""
-    sample_id: int
+    sample_id: str
+    film_id: int     # key into film_wells (from set_film_plate_16) -- where this sample gets drop-cast
     well: str        # source well label (e.g. "A1") -- samples sharing a well are drawn from the same physical precursor mix
     vol_PbI2: float  # Volume of PbI2 precursor in µL
     vol_BAAc: float  # Volume of BAAc precursor in µL
@@ -191,6 +193,13 @@ def validate_sample_parameters(samples: List[SampleParameters]) -> Tuple[bool, s
             return False, f"Sample {sid}: temperature must be 0-150°C, got {temp}"
         if anneal_min < 0 or anneal_min > 60:
             return False, f"Sample {sid}: anneal_min must be 0-60 min, got {anneal_min}"
+        if sample.film_id < 1:
+            return False, f"Sample {sid}: film_id must be >= 1, got {sample.film_id}"
+
+    film_ids = [s.film_id for s in samples]
+    dupes = sorted({fid for fid in film_ids if film_ids.count(fid) > 1})
+    if dupes:
+        return False, f"Duplicate film_ID(s) assigned to more than one sample: {dupes}"
 
     return True, "All samples valid"
 
@@ -307,17 +316,22 @@ class Quasi2DProtocol:
         protocol,
         source_wells: list,
         film_wells: Dict[int, Any],
+        film_ids: list,
         tiprack,
         volume: float = 10,
         hover_seconds: float = 3,
         sample_ids: list = None,
         anneal_mins: list = None,
     ) -> None:
-        """Drop cast one film-plate spot at a time: one source well per spot,
-        one tip picked up and dropped per drop. source_wells must line up
-        1:1 with the sorted film_wells keys (from set_film_plate_16). Hovers
-        over each spot for hover_seconds after dispensing so the drop has
-        time to settle before the pipette moves on.
+        """Drop cast one film-plate spot at a time. film_ids gives each drop's
+        target spot explicitly (the sample's film_ID from BATCH_CSV) -- the
+        order of source_wells/film_ids controls execution order (e.g.
+        longest anneal_min first), independent of where each drop physically
+        lands. A tip is only picked up when source_wells moves to a
+        different well than the previous drop -- consecutive drops sharing
+        the same source well reuse the same tip instead of picking a fresh
+        one each time. Hovers over each spot for hover_seconds after
+        dispensing so the drop has time to settle before the pipette moves on.
 
         If sample_ids/anneal_mins are given (one entry per source well, same
         order), right after each sample's drop is dispensed this:
@@ -327,12 +341,11 @@ class Quasi2DProtocol:
              visible remotely -- it shows up in this run's command list via
              the Opentrons HTTP API, which is how preruns/preflight_films.py
              computes each sample's pickup time from the instrument PC."""
-        all_keys = sorted(film_wells.keys())
-        if len(source_wells) % 2 != 0:
-            raise ValueError(f"source_wells must be an even count (dropcast in pairs), got {len(source_wells)}")
-        if len(source_wells) > len(all_keys):
-            raise ValueError(f"source_wells has {len(source_wells)} items, exceeds the {len(all_keys)} spots on the film plate")
-        keys = all_keys[:len(source_wells)]
+        if len(film_ids) != len(source_wells):
+            raise ValueError(f"film_ids must match source_wells length ({len(source_wells)}), got {len(film_ids)}")
+        missing = sorted(set(film_ids) - set(film_wells.keys()))
+        if missing:
+            raise ValueError(f"film_ID(s) {missing} not found on the film plate grid (valid: {sorted(film_wells.keys())})")
         if sample_ids is not None and len(sample_ids) != len(source_wells):
             raise ValueError(f"sample_ids must have {len(source_wells)} items, got {len(sample_ids)}")
         if anneal_mins is not None and len(anneal_mins) != len(source_wells):
@@ -340,20 +353,28 @@ class Quasi2DProtocol:
 
         self.pip20.configure_nozzle_layout(**self._get_tips_config(1, tiprack))
 
-        for i, (well, key) in enumerate(zip(source_wells, keys)):
-            anchor, (ox, oy, oz) = film_wells[key]
+        current_well = None
+        for i, (well, film_id) in enumerate(zip(source_wells, film_ids)):
+            anchor, (ox, oy, oz) = film_wells[film_id]
             location = anchor.top(z=oz).move(Point(ox, oy, 0))
 
-            self.pip20.pick_up_tip()
+            if well is not current_well:
+                if current_well is not None:
+                    self.pip20.drop_tip()
+                self.pip20.pick_up_tip()
+                current_well = well
+
             self.pip20.aspirate(volume, well)
             self.pip20.move_to(location)
             self.pip20.dispense(volume)
             protocol.delay(seconds=hover_seconds)
-            self.pip20.drop_tip()
 
             if sample_ids is not None and anneal_mins is not None:
                 add_material(sample_ids[i], anneal_mins[i])
                 protocol.comment(f"TIMER_START sample={sample_ids[i]} anneal_min={anneal_mins[i]}")
+
+        if current_well is not None:
+            self.pip20.drop_tip()
 
     def test_film_plate_positions(
         self,
@@ -487,6 +508,7 @@ def run(protocol):
 
     pbi2 = get_precursor("PbI2")
     mai = get_precursor("MAI")
+    baac = get_precursor("BAAc")
 
     n_wells = len(wells_in_order)
     dest_wells = film._get_wells(plate_96, START_INDEX)[:n_wells]
@@ -499,6 +521,7 @@ def run(protocol):
 
     vol_pbi2_list = _volumes_by_well("vol_PbI2")
     vol_mai_list = _volumes_by_well("vol_MAI")
+    vol_baac_list = _volumes_by_well("vol_BAAc")
 
     protocol.comment("=== Starting film Protocol ===")
     if RUN_TRANSFER_PBI2:
@@ -513,6 +536,12 @@ def run(protocol):
     else:
         protocol.comment(f"Skipped {mai.name} transfer")
 
+    if RUN_TRANSFER_BAAC:
+        film.transfer_precursor_batch(dest_wells, vol_baac_list, reservoir, tiprack_300, source_well_index=baac.well_index, n=n_wells)
+        protocol.comment(f"Transfer {baac.name} completed!")
+    else:
+        protocol.comment(f"Skipped {baac.name} transfer")
+
     if RUN_MIXING:
         film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=START_INDEX, n=n_wells)
         protocol.comment("Mixing completed!")
@@ -520,14 +549,18 @@ def run(protocol):
         protocol.comment("Skipped mixing")
 
     if RUN_DROP_CASTING:
-        # Every sample maps to its group's physical dest well, so e.g. the 8
-        # "A1" samples all draw from the same well, then the 8 "A2" samples
-        # draw from the other -- 8 films from A1 followed by 8 from A2.
+        # Process longest anneal_min first (so the slowest-annealing films go
+        # down soonest), but each sample still lands in its own film_ID spot
+        # on the plate regardless of processing order. Each sample draws from
+        # its group's physical dest well, e.g. every sample with well="A4"
+        # draws from the same mixed precursor well.
+        samples_by_anneal = sorted(samples, key=lambda s: s.anneal_min, reverse=True)
         well_to_dest = dict(zip(wells_in_order, dest_wells))
-        source_wells = [well_to_dest[s.well] for s in samples]
-        sample_ids = [s.sample_id for s in samples]
-        anneal_mins = [s.anneal_min for s in samples]
-        film.drop_cast_single(protocol, source_wells, film_wells, tiprack_20, volume=DROP_VOL,
+        source_wells = [well_to_dest[s.well] for s in samples_by_anneal]
+        film_ids = [s.film_id for s in samples_by_anneal]
+        sample_ids = [s.sample_id for s in samples_by_anneal]
+        anneal_mins = [s.anneal_min for s in samples_by_anneal]
+        film.drop_cast_single(protocol, source_wells, film_wells, film_ids, tiprack_20, volume=DROP_VOL,
                                sample_ids=sample_ids, anneal_mins=anneal_mins)
         protocol.comment("Drop casting completed!")
     else:

@@ -93,7 +93,7 @@ START_INDEX = 4  # 0-indexed plate column to start filling from (e.g. 2 = column
 # Batch data embedded verbatim from input/0713_batch_1.csv -- kept inline (rather
 # than read from that path at run-time) because protocol files execute on the
 # OT-2's onboard server, which has no access back to this repo's filesystem.
-BATCH_CSV = """sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_stock_volume_uL,BAAc_stock_volume_uL,R_PbI2,R_MAI,R_BAAc
+BATCH_CSV = """well,sample_id,Temperature_C,Anneal_Time_min,PbI2_stock_volume_uL,MAI_stock_volume_uL,BAAc_stock_volume_uL,R_PbI2,R_MAI,R_BAAc
 1,70,60,52,141,107,1,2.7,2.05
 2,70,60,52,141,107,1,2.7,2.05
 3,70,60,62,83,155,1,1.35,2.5
