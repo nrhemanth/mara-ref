@@ -16,6 +16,6 @@ yarn-error.log*
 # Temporal dev server local persistence
 .temporal/
 
-_pycache__
+__pycache__
 results/
 input/
