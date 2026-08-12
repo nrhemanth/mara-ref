@@ -56,9 +56,10 @@ def format_oceanview_txt(
     intensities: list[float],
 ) -> str:
     """Render a spectrum as text in OceanView's own export format (header
-    metadata block + ">>>>>Begin Spectral Data<<<<<" + wavelength,intensity
-    rows), so files saved by this codebase's acquisition scripts are
-    interchangeable with ones exported directly from OceanView."""
+    metadata block + ">>>>>Begin Spectral Data<<<<<" + space-separated
+    wavelength/intensity rows, no column-heading row), so files saved by
+    this codebase's acquisition scripts are readable by DataLab the same
+    way files exported directly from OceanView are."""
     lines = [
         f"Data from {filename} Node",
         "",
@@ -74,9 +75,8 @@ def format_oceanview_txt(
         "XAxis mode: Wavelengths",
         f"Number of Pixels in Spectrum: {metadata.num_pixels}",
         ">>>>>Begin Spectral Data<<<<<",
-        "wavelength,intensity",
     ]
-    lines.extend(f"{w},{i}" for w, i in zip(wavelengths, intensities))
+    lines.extend(f"{w} {i}" for w, i in zip(wavelengths, intensities))
     return "\n".join(lines) + "\n"
 
 

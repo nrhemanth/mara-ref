@@ -77,10 +77,10 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = True
-RUN_TRANSFER_MAI = True
-RUN_TRANSFER_BAAC = True
-RUN_MIXING = True
+RUN_TRANSFER_PBI2 = False
+RUN_TRANSFER_MAI = False
+RUN_TRANSFER_BAAC = False
+RUN_MIXING = False
 RUN_DROP_CASTING = True
 
 # Well plate starting column
@@ -91,31 +91,31 @@ START_INDEX = 3  # 0-indexed plate column to start filling from (e.g. 2 = column
 # 8 times during drop-casting -- 8 films from A4, 8 from B4, 16 total.
 # anneal_min sweeps the same 4 durations (5/20/40/60 min) twice per well;
 # edit these if you want a different/wider sweep.
-BATCH_CSV = """ID,film_ID,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio
-FOKYMT,1,A4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-GXOMUH,2,A4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-ADHTAJ,3,A4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-VUFXXM,4,A4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-SXFNHW,5,B4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-RULNGE,6,B4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-DFZKLP,7,B4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-DGVGYX,8,B4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-TFYYCU,9,A4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-GMETKF,10,A4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-MRZRAH,11,A4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-MZBDFP,12,A4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-TJYNKO,13,B4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-FYWWZJ,14,B4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-MOPCIX,15,B4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-NANXCA,16,B4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+BATCH_CSV = """ID,film_num,film_well,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio
+AVWIIM,1,A1,A1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+GJAJKC,2,A2,A1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+DFKKHT,3,A3,A1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+SANEDV,4,A4,A1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+BGUGLZ,5,B1,B1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+FGWPKY,6,B2,B1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+LGSLYG,7,B3,B1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+GCQXMI,8,B4,B1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+DXYMVG,9,C1,A1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+WXZWWO,10,C2,A1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+NSSJNK,11,C3,A1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+XOOPLH,12,C4,A1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+BMSMUC,13,D1,B1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+RNLZJH,14,D2,B1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+FJMEBY,15,D3,B1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+KATZLW,16,D4,B1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
 """
 
 # change well index to change the well in the precusor reservoir. 
 # default is 0,1,2
 PRECURSORS = json.loads("""{
-    "PbI2": {"name": "PbI2", "well_index": 9, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "BAAc": {"name": "BAAc", "well_index": 10, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "MAI":  {"name": "MAI",  "well_index": 11, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
+    "PbI2": {"name": "PbI2", "well_index": 6, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "BAAc": {"name": "BAAc", "well_index": 8, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "MAI":  {"name": "MAI",  "well_index": 7, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
 """)
 
@@ -123,13 +123,16 @@ PRECURSORS = json.loads("""{
 requirements = {"robotType": "OT-2", "apiLevel": "2.27"}
 
 def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
-    """Parse BATCH_CSV (ID, film_ID, well, anneal_time, temperature,
-    PbI2_vol, MAI_vol, BAAc_vol, ...) into SAMPLE_DATA's shape."""
+    """Parse BATCH_CSV (ID, film_num, film_well, well, anneal_time,
+    temperature, PbI2_vol, MAI_vol, BAAc_vol, ...) into SAMPLE_DATA's shape.
+    film_well (e.g. "A1") is just film_num's human-readable equivalent under
+    set_film_plate_16's row-major numbering -- film_num is what's actually
+    used as the film_wells lookup key, film_well is ignored."""
     reader = csv.DictReader(StringIO(csv_text))
     return [
         {
             "sample_id": row["ID"],
-            "film_id": int(row["film_ID"]),
+            "film_id": int(row["film_num"]),
             "well": row["well"],
             "temperature": float(row["temperature"]),
             "anneal_min": float(row["anneal_time"]),

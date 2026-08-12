@@ -13,6 +13,7 @@ dependencies = [
     "uvicorn[standard] ~= 0.32",
     "python-multipart ~= 0.0.20",
     "temporalio ~= 1.30",
+    "opencv-python-headless ~= 4.10",
 ]
 
 [build-system]
