@@ -77,10 +77,10 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = True
-RUN_TRANSFER_MAI = True
-RUN_TRANSFER_BAAC = True
-RUN_MIXING = True 
+RUN_TRANSFER_PBI2 = False
+RUN_TRANSFER_MAI = False
+RUN_TRANSFER_BAAC = False
+RUN_MIXING = False
 RUN_DROP_CASTING = True 
 
 # Well plate starting column
@@ -92,18 +92,18 @@ START_INDEX = 7  # 0-indexed plate column to start filling from (e.g. 2 = column
 # anneal_min sweeps the same 4 durations (5/20/40/60 min) twice per well;
 # edit these if you want a different/wider sweep.
 BATCH_CSV = """sample_id,film_num,film_well,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio,Order 
-MXFLIX,1,A1,A7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
-GSRPGR,2,A2,A7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
-EHIJNN,3,A3,B7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
-EIMDRS,4,A4,B7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
-SWLRNY,5,B1,C7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
-PLYWZH,6,B2,C7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
-OTDDAB,7,B3,D7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
-ZZUNZM,8,B4,D7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
-IPHSXF,9,C1,E7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
-YEBJXM,10,C2,E7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
-LFRYUF,11,C3,F7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
-SQHQAO,12,C4,F7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
+PCFVNK,1,A1,A7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
+EBKZKG,2,A2,A7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
+RXBDKL,3,A3,B7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
+XGYBOG,4,A4,B7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,P>M>B
+LAGKZK,5,B1,C7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
+CSEILO,6,B2,C7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
+STVAAO,7,B3,D7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
+CONPAG,8,B4,D7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,B>P>M
+TJQOAW,9,C1,E7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
+BWSWGA,10,C2,E7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
+OQRIJC,11,C3,F7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
+XRFXSM,12,C4,F7,15,150,60.0,120.0,120.0,1.0,2.0,2.0,M>B>P
 """
 
 # change well index to change the well in the precusor reservoir. 
