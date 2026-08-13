@@ -301,15 +301,23 @@ class Quasi2DProtocol:
         tiprack,
         mix_volume: float = 150,
         dest_index: int = 0,
+        n: int = 8,
     ) -> None:
-        """Pick up a full column of tips and mix all 8 wells simultaneously,
-        `cycles` times."""
-        self.pip300.configure_nozzle_layout(style=ALL, tip_racks=[tiprack])
-
+        """Pick up tips for `n` wells (default: a full 8-well column) and mix
+        them simultaneously, `cycles` times. For n < 8 this configures a
+        partial column the same way transfer_precursor_batch does, anchored
+        at the group's last well (see _get_tips_config) -- so a trailing
+        chunk with fewer than 8 real samples doesn't burn a full 8 tips."""
         col_wells = self._get_wells(dest_plate, dest_index)
+        if n == 8:
+            self.pip300.configure_nozzle_layout(style=ALL, tip_racks=[tiprack])
+            anchor = col_wells[0]
+        else:
+            self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
+            anchor = col_wells[n - 1]
 
         self.pip300.pick_up_tip()
-        self.pip300.mix(cycles, mix_volume, col_wells[0])
+        self.pip300.mix(cycles, mix_volume, anchor)
         self.pip300.drop_tip()
 
     def drop_cast_single(
@@ -541,12 +549,14 @@ def run(protocol):
     else:
         protocol.comment(f"Skipped {mai.name} transfer")
 
-    # Mixing uses a full 8-tip column pipette (style=ALL), which is physically
-    # fixed to one plate column at a time -- it can't span two columns with
-    # the same tips, so this still loops (and re-picks tips) per chunk.
+    # Mixing is physically fixed to one plate column at a time -- it can't
+    # span two columns with the same tips, so this still loops (and re-picks
+    # tips) per chunk. Each chunk picks up only as many tips as it has real
+    # (non-padded) samples, so a trailing partial column doesn't waste tips.
     if RUN_MIXING:
         for i in range(n_chunks):
-            film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=START_INDEX + i)
+            chunk_n = min(n_per_chunk, len(samples) - i * n_per_chunk)
+            film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=START_INDEX + i, n=chunk_n)
         protocol.comment("Mixing completed!")
     else:
         protocol.comment("Skipped mixing")

@@ -77,45 +77,45 @@ TEST_FILM_PLATE_POSITIONS = False
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
 # from, so these booleans are the only way to skip a step there.
-RUN_TRANSFER_PBI2 = False
-RUN_TRANSFER_MAI = False
-RUN_TRANSFER_BAAC = False
-RUN_MIXING = False
+RUN_TRANSFER_PBI2 = True
+RUN_TRANSFER_MAI = True
+RUN_TRANSFER_BAAC = True
+RUN_MIXING = True 
 RUN_DROP_CASTING = True
 
 # Well plate starting column
-START_INDEX = 3  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
+START_INDEX = 4  # 0-indexed plate column to start filling from (e.g. 2 = column 3, 4 = column 5, etc.) -- must be 0-11 and leave enough room for all samples to fit in the 12-column plate_96
 
 # Two source wells (A4, B4), same quasi-2D MAPbI3 stoichiometry in both
 # (1:2:2 PbI2:MAI:BAAc, BAAc as the bulky spacer cation). Each is drawn from
 # 8 times during drop-casting -- 8 films from A4, 8 from B4, 16 total.
 # anneal_min sweeps the same 4 durations (5/20/40/60 min) twice per well;
 # edit these if you want a different/wider sweep.
-BATCH_CSV = """ID,film_num,film_well,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio
-AVWIIM,1,A1,A1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-GJAJKC,2,A2,A1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-DFKKHT,3,A3,A1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-SANEDV,4,A4,A1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-BGUGLZ,5,B1,B1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-FGWPKY,6,B2,B1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-LGSLYG,7,B3,B1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-GCQXMI,8,B4,B1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-DXYMVG,9,C1,A1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-WXZWWO,10,C2,A1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-NSSJNK,11,C3,A1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-XOOPLH,12,C4,A1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-BMSMUC,13,D1,B1,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-RNLZJH,14,D2,B1,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-FJMEBY,15,D3,B1,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-KATZLW,16,D4,B1,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+BATCH_CSV = """sample_id,film_num,film_well,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio
+RBKWOV,1,A1,D4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+UITVFR,2,A2,E4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+COQVEE,3,A3,D4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+HRQPPD,4,A4,E4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+BGYFSN,5,B1,D4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+DERYTO,6,B2,E4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+TFNNFA,7,B3,D4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+RCHFNK,8,B4,E4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
+WSNSJA,9,C1,D4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+PWVTYK,10,C2,E4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+NAKPWP,11,C3,D4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+XOSFVA,12,C4,E4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
+DGMZGS,13,D1,D4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+RIPEPL,14,D2,E4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+OXRBAD,15,D3,D4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+ASLHPA,16,D4,E4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
 """
 
 # change well index to change the well in the precusor reservoir. 
 # default is 0,1,2
 PRECURSORS = json.loads("""{
-    "PbI2": {"name": "PbI2", "well_index": 6, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "BAAc": {"name": "BAAc", "well_index": 8, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
-    "MAI":  {"name": "MAI",  "well_index": 7, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
+    "PbI2": {"name": "PbI2", "well_index": 5, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "MAI":  {"name": "MAI",  "well_index": 4, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"},
+    "BAAc": {"name": "BAAc", "well_index": 3, "volume": 9500, "concentration": 1.0, "solvent": "DMF:DMSO"}
 }
 """)
 
@@ -131,7 +131,7 @@ def _load_sample_data_from_csv(csv_text: str) -> List[Dict[str, Any]]:
     reader = csv.DictReader(StringIO(csv_text))
     return [
         {
-            "sample_id": row["ID"],
+            "sample_id": row["sample_id"],
             "film_id": int(row["film_num"]),
             "well": row["well"],
             "temperature": float(row["temperature"]),

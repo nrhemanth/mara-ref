@@ -43,6 +43,14 @@ from tsuru_sdk.config import PLATE_TYPES
 DEFAULT_CAMERA_INDEX = 0
 WARMUP_SECONDS = 1.0  # let the grabber thread get a first frame + exposure settle before scanning
 
+# Tsuru.scan_plate fires each move_well the instant the previous one reports
+# "At well", with no settle time - the serpentine sweep reverses X direction
+# every other row, and back-to-back reversals were observed to make the
+# gantry drift (see characterize/tsuru_pl_grid_scan.py, where this was first
+# hit at tighter spacing). Dwell after each well before the next move_well
+# goes out. Override via env var to tune without editing code.
+SETTLE_SECONDS = float(os.environ.get("SETTLE_SECONDS", "0.4"))
+
 # Windows backends to try in order - DSHOW can refuse to open some USB cameras
 # by plain index ("backend is generally available but can't be used to
 # capture by index") even though the same device works fine under MSMF, or
@@ -173,6 +181,7 @@ def main(plate_type: str, start_well: str, end_well: str, out_dir: Path, csv_pat
             cv2.imwrite(str(out_path), frame)
             captured.append(out_path)
             print(f"[{well}] saved {out_path.name}")
+            time.sleep(SETTLE_SECONDS)
 
         with Tsuru(tsuru_port) as gantry:
             gantry.scan_plate(Mode.CAMERA, plate_type, start_well, end_well, on_well=on_well)

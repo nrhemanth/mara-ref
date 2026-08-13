@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 from characterize.tsuru_pl_scan import read_sample_ids, write_spectrum_csv, write_spectrum_txt
@@ -57,6 +58,14 @@ GRID_STEP_MM = 15.0  # spacing between adjacent grid points, in both X and Y
 GRID_COL_DIST = GRID_STEP_MM  # +X = further right, matching every real PlateType's convention
 GRID_ROW_DIST = GRID_STEP_MM  # see "Sign caveat" in the module docstring
 GRID_KEY = "_pl_grid_scan_scratch"  # scratch PLATE_TYPES entry, overwritten per well
+
+# Tsuru.scan_plate fires each move_well the instant the previous one reports
+# "At well", with no settle time - at the grid's tight 10-15mm spacing the
+# back-to-back direction reversals (e.g. row A's A1->A2->A3 immediately
+# followed by row B running the other way) were observed to make the gantry
+# drift. Dwell after every move (grid point and real well alike) before the
+# next move_well goes out. Override via env var to tune without editing code.
+SETTLE_SECONDS = float(os.environ.get("SETTLE_SECONDS", "0.4"))
 
 # virtual-grid well label ("A1".."C3") -> numpad-style point label (1-9)
 GRID_POINT_LABEL = {f"{row}{col}": (r - 1) * 3 + col for r, row in enumerate("ABC", 1) for col in (1, 2, 3)}
@@ -74,8 +83,8 @@ def register_grid_plate_type(plate_type: str, well: str) -> None:
     center_y = (plate.offset_y + delta.dy) + (plate.rows - well_row) * plate.row_dist
 
     PLATE_TYPES[GRID_KEY] = PlateType(
-        offset_x=center_x - GRID_COL_DIST,
-        offset_y=center_y - GRID_ROW_DIST,
+        offset_x=center_x - delta.dx - GRID_COL_DIST,
+        offset_y=center_y - delta.dy - GRID_ROW_DIST,
         col_dist=GRID_COL_DIST,
         row_dist=GRID_ROW_DIST,
         rows=3,
@@ -114,9 +123,11 @@ def main(plate_type: str, start_well: str, end_well: str, samples_csv: Path, out
                     write_spectrum_csv(out_dir / f"{stem}.csv", wavelengths, intensities)
                     write_spectrum_txt(out_dir / f"{stem}.txt", metadata, wavelengths, intensities)
                     print(f"{well} point {point}: saved as {stem} (peak={max(intensities):.1f})")
+                    time.sleep(SETTLE_SECONDS)
 
                 gantry.scan_plate(Mode.PL, GRID_KEY, "A1", "C3", on_well=on_grid_point)
                 scanned.append(well)
+                time.sleep(SETTLE_SECONDS)
 
             gantry.scan_plate(Mode.PL, plate_type, start_well, end_well, on_well=on_well)
             gantry.home()

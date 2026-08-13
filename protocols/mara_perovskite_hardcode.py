@@ -328,17 +328,29 @@ class Quasi2DProtocol:
         mix_volume: float = 100,
         dest_index: int = 0,
     ) -> None:
-        """Pick up a full column of tips and mix all 8 wells simultaneously."""
+        """Pick up tips only for the wells that actually have a sample
+        (nonzero mix cycles) and mix them simultaneously -- avoids burning a
+        full 8-tip column when fewer than 8 real samples are loaded."""
         if len(mix_cycles_list) != self.n_wells:
             raise ValueError(f"mix_cycles_list must be {self.n_wells} items for {self.fill_mode} mode, got {len(mix_cycles_list)}")
 
-        self.pip300.configure_nozzle_layout(style=ALL, tip_racks=[tiprack])
+        real_cycles = [c for c in mix_cycles_list if c > 0]
+        n = len(real_cycles)
+        if n == 0:
+            return
 
         col_wells = self._get_wells(dest_plate, dest_index)
-        cycles = max(mix_cycles_list)
+        cycles = max(real_cycles)
+
+        if n == 8:
+            self.pip300.configure_nozzle_layout(style=ALL, tip_racks=[tiprack])
+            anchor = col_wells[0]
+        else:
+            self.pip300.configure_nozzle_layout(**self._get_tips_config(n, tiprack))
+            anchor = col_wells[n - 1]
 
         self.pip300.pick_up_tip()
-        self.pip300.mix(cycles, mix_volume, col_wells[0])
+        self.pip300.mix(cycles, mix_volume, anchor)
         self.pip300.drop_tip()
 
     def drop_cast_multi(

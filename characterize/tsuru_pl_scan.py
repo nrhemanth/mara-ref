@@ -27,12 +27,21 @@ from __future__ import annotations
 import csv
 import os
 import sys
+import time
 from pathlib import Path
 
 from hardware.ocean_HDX import OceanHDX, OceanHDXMetadata, format_oceanview_txt
 from hardware.tsuru import PORT as DEFAULT_PORT
 from tsuru_sdk import Mode, Tsuru
 from tsuru_sdk.config import PLATE_TYPES
+
+# Tsuru.scan_plate fires each move_well the instant the previous one reports
+# "At well", with no settle time - the serpentine sweep reverses X direction
+# every other row, and back-to-back reversals were observed to make the
+# gantry drift (see characterize/tsuru_pl_grid_scan.py, where this was first
+# hit at tighter spacing). Dwell after each well before the next move_well
+# goes out. Override via env var to tune without editing code.
+SETTLE_SECONDS = float(os.environ.get("SETTLE_SECONDS", "0.4"))
 
 
 def read_sample_ids(path: Path) -> dict[str, str]:
@@ -81,6 +90,7 @@ def main(plate_type: str, start_well: str, end_well: str, samples_csv: Path, out
             write_spectrum_txt(out_dir / f"{stem}.txt", metadata, wavelengths, intensities)
             print(f"{well}: saved as {stem} ({len(intensities)} points, peak={max(intensities):.1f})")
             scanned.append(well)
+            time.sleep(SETTLE_SECONDS)
 
         with Tsuru(tsuru_port) as gantry:
             gantry.scan_plate(Mode.PL, plate_type, start_well, end_well, on_well=on_well)
