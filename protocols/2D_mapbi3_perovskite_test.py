@@ -546,7 +546,7 @@ def run(protocol):
         protocol.comment(f"Skipped {baac.name} transfer")
 
     if RUN_MIXING:
-        film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=50, dest_index=START_INDEX, n=n_wells)
+        film.mix_wells_column(plate_96, MIX_CYCLES, tiprack_300, mix_volume=150, dest_index=START_INDEX, n=n_wells)
         protocol.comment("Mixing completed!")
     else:
         protocol.comment("Skipped mixing")
