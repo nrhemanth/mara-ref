@@ -71,8 +71,7 @@ GRID_Y_OFFSET = None   # mm from anchor's A1 in Y; None = center on GRID_PITCH
 GRID_Z_OFFSET = -11.5   # mm added to the heater-top Z (80 mm, set in set_film_plate_16) Set at -13.0 when glass + holder
 HOVER_HEIGHT = 1.5     # mm above each spot to hover at for a visual check
 
- # Set True to jog the p20 (single tip) through all 16 film-plate spots, pausing at each one, instead of running the full protocol.
-TEST_FILM_PLATE_POSITIONS = False
+DROPCAST_Z_OFFSET = 2 # mm added to the heater-top Z (80 mm, set in set_film_plate_16) Set at -13.0 when glass + holder
 
 # Pre-set which steps to run. Edit these before uploading to the robot: on a
 # real run through the Opentrons App there's no terminal for input() to read
@@ -92,22 +91,23 @@ START_INDEX = 4  # 0-indexed plate column to start filling from (e.g. 2 = column
 # anneal_min sweeps the same 4 durations (5/20/40/60 min) twice per well;
 # edit these if you want a different/wider sweep.
 BATCH_CSV = """sample_id,film_num,film_well,well,anneal_time,temperature,PbI2_vol,MAI_vol,BAAc_vol,PbI2_ratio,MAI_ratio,BAAc_ratio
-RBKWOV,1,A1,D4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-UITVFR,2,A2,E4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-COQVEE,3,A3,D4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-HRQPPD,4,A4,E4,5,150,60.0,120.0,120.0,1.0,2.0,2.0
-BGYFSN,5,B1,D4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-DERYTO,6,B2,E4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-TFNNFA,7,B3,D4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-RCHFNK,8,B4,E4,20,150,60.0,120.0,120.0,1.0,2.0,2.0
-WSNSJA,9,C1,D4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-PWVTYK,10,C2,E4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-NAKPWP,11,C3,D4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-XOSFVA,12,C4,E4,40,150,60.0,120.0,120.0,1.0,2.0,2.0
-DGMZGS,13,D1,D4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-RIPEPL,14,D2,E4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-OXRBAD,15,D3,D4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
-ASLHPA,16,D4,E4,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+FUXIIW,1,A1,A9,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+DDATAO,2,A2,A9,5,150,60.0,120.0,120.0,1.0,2.0,2.0
+YLCXHZ,3,A3,A9,10,150,60.0,120.0,120.0,1.0,2.0,2.0
+SZYSMQ,4,A4,A9,10,150,60.0,120.0,120.0,1.0,2.0,2.0
+QFEOWT,5,B1,A9,15,150,60.0,120.0,120.0,1.0,2.0,2.0
+VJNISN,6,B2,A9,15,150,60.0,120.0,120.0,1.0,2.0,2.0
+OHBDBP,7,B3,A9,25,150,60.0,120.0,120.0,1.0,2.0,2.0
+SHXIQV,8,B4,A9,25,150,60.0,120.0,120.0,1.0,2.0,2.0
+OQKDGO,9,C1,B9,35,150,60.0,120.0,120.0,1.0,2.0,2.0
+NRHOHH,10,C2,B9,35,150,60.0,120.0,120.0,1.0,2.0,2.0
+TFHMUT,11,C3,B9,45,150,60.0,120.0,120.0,1.0,2.0,2.0
+LXFRKC,12,C4,B9,45,150,60.0,120.0,120.0,1.0,2.0,2.0
+DJHVEX,13,D1,B9,55,150,60.0,120.0,120.0,1.0,2.0,2.0
+UPQFQG,14,D2,B9,55,150,60.0,120.0,120.0,1.0,2.0,2.0
+DSPECK,15,D3,B9,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+JYNECE,16,D4,B9,60,150,60.0,120.0,120.0,1.0,2.0,2.0
+
 """
 
 # change well index to change the well in the precusor reservoir. 
@@ -436,7 +436,7 @@ def set_film_plate_16(
         y_offset = pitch / 2
 
     plate_film = protocol.load_labware('opentrons_96_wellplate_200ul_pcr_full_skirt', slot)
-    plate_film.set_offset(x=3, y=1.5, z=80)
+    plate_film.set_offset(x=3, y=1.5, z=80+DROPCAST_Z_OFFSET)  # 80 mm is the heater top, plus z_offset to hover above it
 
     anchor = plate_film['A1']
     film_wells = {}
@@ -489,11 +489,6 @@ def run(protocol):
     # -----------------------
     # MAIN
     # -----------------------
-    if TEST_FILM_PLATE_POSITIONS:
-        protocol.comment("=== Film plate position check ===")
-        film.test_film_plate_positions(protocol, plate_film, film_wells, tiprack_20)
-        return
-
     protocol.comment("=== Loading Sample Parameters ===")
     samples = [SampleParameters(**s) for s in SAMPLE_DATA]
     is_valid, msg = validate_sample_parameters(samples)

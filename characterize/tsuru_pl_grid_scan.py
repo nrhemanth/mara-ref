@@ -11,20 +11,22 @@ Grid points are labeled 1-9 like a numpad, 5 = center:
 Collection snakes per well: 1>2>3>6>5>4>7>8>9 (row-major serpentine).
 
 No firmware or tsuru_sdk changes needed. Tsuru.move_well only knows how to
-target a labeled well on a *plate*, computed from a PlateType's offset/spacing
-- there's no lower-level "nudge by X/Y mm" primitive exposed. So each real
-well's 3x3 grid is itself modeled as a temporary, throwaway 3-row/3-col
-PlateType (10mm spacing) whose own A1 anchor is algebraically placed so that
-its center well (its "B2") lands exactly on the real well's calibrated
-center - registered into tsuru_sdk.config.PLATE_TYPES under a scratch key,
-then scanned with the ordinary Tsuru.scan_plate(). The firmware-side
-probeHolderX/Y correction (see tsuru_sdk/config.py's module docstring) is
-folded into every move_well the same way regardless of which PlateType made
-the call, so it cancels out of this construction automatically.
+target a labeled well on a *plate*, computed from a PlateType's geometry plus
+a PLATE_OFFSETS[plate_type][mode] anchor - there's no lower-level "nudge by
+X/Y mm" primitive exposed. So each real well's 3x3 grid is itself modeled as
+a temporary, throwaway 3-row/3-col PlateType (registered into
+tsuru_sdk.config.PLATE_TYPES under a scratch key) paired with a matching
+scratch tsuru_sdk.config.PLATE_OFFSETS["PL"] entry, algebraically placed so
+that the grid's center well (its "B2") lands exactly on the real well's
+calibrated PL center - then scanned with the ordinary Tsuru.scan_plate().
+PL's offset is measured directly per plate type now (see tsuru_sdk/config.py
+- PLATE_OFFSETS replaced the old shared-baseline-plus-delta scheme), so this
+just reads that offset straight off the real plate; there's no delta to
+cancel out anymore.
 
 Sign caveat: this assumes +Y (as sent to move_well) is physically "toward
-row A" / "up" on the bench, matching the assumption behind the PLATE_TYPES
-offset_y calibration itself. That's unverified hardware-direction knowledge,
+row A" / "up" on the bench, matching the assumption behind PLATE_OFFSETS'
+own offset_y calibration. That's unverified hardware-direction knowledge,
 not something derivable from code - jog to well label 2 (should read as
 "up"/toward row A from center) vs label 8 before trusting a real run, and
 flip GRID_ROW_DIST's sign below if it's backwards.
@@ -51,7 +53,7 @@ from hardware.ocean_HDX import OceanHDX
 from hardware.tsuru import PORT as DEFAULT_PORT
 from tsuru_sdk import Mode, Tsuru
 from tsuru_sdk import config as tsuru_config
-from tsuru_sdk.config import PLATE_TYPES, PlateType
+from tsuru_sdk.config import PLATE_TYPES, PlateType, ProbeOffset
 from tsuru_sdk.tsuru import _well_row_col
 
 GRID_STEP_MM = 15.0  # spacing between adjacent grid points, in both X and Y
@@ -72,24 +74,26 @@ GRID_POINT_LABEL = {f"{row}{col}": (r - 1) * 3 + col for r, row in enumerate("AB
 
 
 def register_grid_plate_type(plate_type: str, well: str) -> None:
-    """Register a scratch 3x3, 10mm-spaced PlateType under GRID_KEY whose
-    center well (virtual "B2") lands on `well`'s calibrated center on
-    `plate_type` - see module docstring for the derivation."""
+    """Register a scratch 3x3, 10mm-spaced PlateType (plus its matching PL
+    PLATE_OFFSETS entry) under GRID_KEY, whose center well (virtual "B2")
+    lands on `well`'s calibrated PL center on `plate_type` - see module
+    docstring for the derivation."""
     plate = PLATE_TYPES[plate_type]
-    delta = tsuru_config.PL_DELTA
+    offset = tsuru_config.PLATE_OFFSETS[plate_type]["PL"]
     well_row, well_col = _well_row_col(well)
 
-    center_x = (plate.offset_x + delta.dx) + (well_col - 1) * plate.col_dist
-    center_y = (plate.offset_y + delta.dy) + (plate.rows - well_row) * plate.row_dist
+    center_x = offset.offset_x + (well_col - 1) * plate.col_dist
+    center_y = offset.offset_y + (plate.rows - well_row) * plate.row_dist
 
     PLATE_TYPES[GRID_KEY] = PlateType(
-        offset_x=center_x - delta.dx - GRID_COL_DIST,
-        offset_y=center_y - delta.dy - GRID_ROW_DIST,
         col_dist=GRID_COL_DIST,
         row_dist=GRID_ROW_DIST,
         rows=3,
         cols=3,
     )
+    tsuru_config.PLATE_OFFSETS[GRID_KEY] = {
+        "PL": ProbeOffset(offset_x=center_x - GRID_COL_DIST, offset_y=center_y - GRID_ROW_DIST),
+    }
 
 
 def main(plate_type: str, start_well: str, end_well: str, samples_csv: Path, out_dir: Path) -> int:
@@ -109,6 +113,7 @@ def main(plate_type: str, start_well: str, end_well: str, samples_csv: Path, out
         metadata = spec.get_metadata()
 
         with Tsuru(tsuru_port) as gantry:
+            gantry.home()
 
             def on_well(well: str) -> None:
                 if well not in sample_ids:
@@ -130,7 +135,7 @@ def main(plate_type: str, start_well: str, end_well: str, samples_csv: Path, out
                 time.sleep(SETTLE_SECONDS)
 
             gantry.scan_plate(Mode.PL, plate_type, start_well, end_well, on_well=on_well)
-            gantry.home()
+            gantry.home()  # park
 
     print(f"Done. {len(scanned)} wells x 9 points written to {out_dir}")
     return 0

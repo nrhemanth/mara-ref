@@ -184,8 +184,9 @@ def main(plate_type: str, start_well: str, end_well: str, out_dir: Path, csv_pat
             time.sleep(SETTLE_SECONDS)
 
         with Tsuru(tsuru_port) as gantry:
-            gantry.scan_plate(Mode.CAMERA, plate_type, start_well, end_well, on_well=on_well)
             gantry.home()
+            gantry.scan_plate(Mode.CAMERA, plate_type, start_well, end_well, on_well=on_well)
+            gantry.home()  # park
     finally:
         grabber.stop()
         camera.release()

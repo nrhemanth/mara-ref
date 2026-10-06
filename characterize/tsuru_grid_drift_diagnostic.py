@@ -8,11 +8,13 @@ return move, stall is a firmware/mechanical problem no amount of Python-side
 settling or reordering can correct), so this exists to tell them apart
 before committing to one.
 
-Uses Mode.CAMERA rather than PL: CAMERA_DELTA is (0, 0) (PLATE_TYPES is
-calibrated directly against the camera - see tsuru_sdk/config.py), so there's
-no probe-delta algebra to second-guess, and results are visual (a webcam
-frame) instead of a spectrum, so drift is obvious at a glance with no
-analysis step. The firmware is fully open-loop (no limit switches or
+Uses Mode.CAMERA rather than PL: Camera offsets are the best-measured entries
+in tsuru_sdk.config.PLATE_OFFSETS (each plate's Camera offset was verified by
+jogging, unlike PL/UV-Vis which are mostly rough placeholders - see
+tsuru_sdk/config.py), so this exercises the grid math against the most
+trustworthy ground truth available, and results are visual (a webcam frame)
+instead of a spectrum, so drift is obvious at a glance with no analysis step.
+The firmware is fully open-loop (no limit switches or
 encoders - see Tsuru_Firmware.ino) and "home" only returns to logical
 step-position (0, 0), not a physical reference, so there's no way to ask the
 hardware "where are you really" - a camera frame is the only ground truth
@@ -56,7 +58,8 @@ from characterize.tsuru_camera_scan import LiveFrameGrabber, open_camera
 from characterize.tsuru_pl_grid_scan import GRID_COL_DIST, GRID_KEY, GRID_POINT_LABEL, GRID_ROW_DIST
 from hardware.tsuru import PORT as DEFAULT_PORT
 from tsuru_sdk import Mode, Tsuru
-from tsuru_sdk.config import CAMERA_DELTA, PLATE_TYPES, PlateType
+from tsuru_sdk import config as tsuru_config
+from tsuru_sdk.config import PLATE_TYPES, PlateType, ProbeOffset
 from tsuru_sdk.tsuru import _well_row_col
 
 DEFAULT_CAMERA_INDEX = 0
@@ -66,23 +69,25 @@ SETTLE_SECONDS = float(os.environ.get("SETTLE_SECONDS", "0.4"))
 
 def register_grid_plate_type_camera(plate_type: str, well: str) -> None:
     """Same construction as tsuru_pl_grid_scan.register_grid_plate_type, but
-    keyed to CAMERA_DELTA instead of PL_DELTA so this diagnostic exercises
-    the identical grid geometry under the probe-free, already-zero-delta
-    camera mode."""
+    keyed to plate_type's Camera PLATE_OFFSETS entry instead of PL, so this
+    diagnostic exercises the identical grid geometry under the best-measured
+    mode available."""
     plate = PLATE_TYPES[plate_type]
+    offset = tsuru_config.PLATE_OFFSETS[plate_type]["Camera"]
     well_row, well_col = _well_row_col(well)
 
-    center_x = (plate.offset_x + CAMERA_DELTA.dx) + (well_col - 1) * plate.col_dist
-    center_y = (plate.offset_y + CAMERA_DELTA.dy) + (plate.rows - well_row) * plate.row_dist
+    center_x = offset.offset_x + (well_col - 1) * plate.col_dist
+    center_y = offset.offset_y + (plate.rows - well_row) * plate.row_dist
 
     PLATE_TYPES[GRID_KEY] = PlateType(
-        offset_x=center_x - CAMERA_DELTA.dx - GRID_COL_DIST,
-        offset_y=center_y - CAMERA_DELTA.dy - GRID_ROW_DIST,
         col_dist=GRID_COL_DIST,
         row_dist=GRID_ROW_DIST,
         rows=3,
         cols=3,
     )
+    tsuru_config.PLATE_OFFSETS[GRID_KEY] = {
+        "Camera": ProbeOffset(offset_x=center_x - GRID_COL_DIST, offset_y=center_y - GRID_ROW_DIST),
+    }
 
 
 def main(plate_type: str, well: str, passes: int, out_dir: Path) -> int:
